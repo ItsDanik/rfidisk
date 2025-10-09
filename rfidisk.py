@@ -9,7 +9,7 @@ import platform
 import psutil
 import signal
 
-CONFIG_FILE = "rfid_config.json"
+CONFIG_FILE = "rfidisk_config.json"
 
 # Version number
 VERSION = "0.4b"
@@ -110,7 +110,7 @@ class RFIDLauncher:
                 "command": "",
                 "title": "new entry",
                 "subtext": "configure me",
-                "line3": "edit rfid_config.json",
+                "line3": "edit rfidisk_config.json",
                 "line4": tag_id,
                 "terminate": ""
             }
@@ -198,7 +198,7 @@ class RFIDLauncher:
                 self.send_display_command(
                     "State Error",
                     "Tag config missing",
-                    "Check rfid_config.json",
+                    "Check rfidisk_config.json",
                     tag_id
                 )
         else:
@@ -477,7 +477,7 @@ class RFIDLauncher:
                 self.send_display_command(
                     "new entry",
                     "configure me",
-                    "edit rfid_config.json",
+                    "edit rfidisk_config.json",
                     new_tag_id
                 )
                 self.send_desktop_notification("New Tag", f"Tag {new_tag_id} added")
