@@ -39,7 +39,7 @@ default_config = {
         "removal_delay": 2.0,
         "kill_process_tree": True,
         "desktop_notifications": True,
-        "notification_icon": "/home/danik/danik/rfidisk/floppy.webp"
+        "notification_icon": "/home/danik/danik/rfidisk/floppy.png"
     }
 }
 
