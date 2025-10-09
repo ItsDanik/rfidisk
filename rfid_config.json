@@ -1,0 +1,175 @@
+{
+  "serial_port": "/dev/rfidisk",
+  "rfid_tags": {
+    "33f31a2a": {
+      "command": "lutris",
+      "title": "Lutris",
+      "subtext": "Game Launcher",
+      "terminate": ""
+    },
+    "1d80bf070d1080": {
+      "command": "cannonball",
+      "title": "Outrun",
+      "subtext": "Cannonball Engine",
+      "line3": "1986",
+      "line4": "SEGA",
+      "terminate": ""
+    },
+    "1d84bf070d1080": {
+      "command": "/home/danik/Games/dethrace/dethrace",
+      "title": "Carmaggeddon",
+      "subtext": "Dethrace Engine",
+      "line3": "1996",
+      "line4": "SCi Interactive",
+      "terminate": ""
+    },
+    "1d81bf070d1080": {
+      "command": "/usr/bin/reminiscence",
+      "title": "Flashback",
+      "subtext": "Reminisce Engine",
+      "line3": "1992",
+      "line4": "Delphine Software",
+      "terminate": ""
+    },
+    "1d18be070d1080": {
+      "command": "/usr/bin/ecwolf --fullscreen",
+      "title": "Wolfenstein 3D",
+      "subtext": "Ecwolf Engine",
+      "line3": "1992",
+      "line4": "id Software",
+      "terminate": ""
+    },
+    "1d16be070d1080": {
+      "command": "/usr/bin/voidsw",
+      "title": "Shadow Warrior",
+      "subtext": "VoidSW Engine",
+      "line3": "1997",
+      "line4": "GT Interactive",
+      "terminate": ""
+    },
+    "1d19be070d1080": {
+      "command": "/opt/sdlpop/prince",
+      "title": "Prince of Persia",
+      "subtext": "SDLPop Engine",
+      "line3": "1989",
+      "line4": "Broderbund",
+      "terminate": ""
+    },
+    "1d17be070d1080": {
+      "command": "/usr/bin/eduke32",
+      "title": "Duke Nukem 3D",
+      "subtext": "eduke32 Engine",
+      "line3": "1996",
+      "line4": "3D Realms",
+      "terminate": ""
+    },
+    "1d0bbf070d1080": {
+      "command": "openfodder",
+      "title": "Cannon Fodder",
+      "subtext": "OpenFodder Engine",
+      "line3": "1993",
+      "line4": "Virgin Interactive",
+      "terminate": ""
+    },
+    "1d82bf070d1080": {
+      "command": "steam steam://rungameid/646570",
+      "title": "Slay the Spire",
+      "subtext": "Steam",
+      "line3": "2019",
+      "line4": "Mega Crit",
+      "terminate": "killall SlayTheSpire"
+    },
+    "1d08bf070d1080": {
+      "command": "steam steam://rungameid/327030",
+      "title": "Worms W.M.D.",
+      "subtext": "Steam",
+      "line3": "2016",
+      "line4": "Team 17",
+      "terminate": "killall \"Worms W.M.D.exe\""
+    },
+    "1d0abf070d1080": {
+      "command": "steam steam://rungameid/1091500",
+      "title": "Cyberpunk 2077",
+      "subtext": "Phantom Liberty",
+      "line3": "2020-2023",
+      "line4": "CDProjectRed",
+      "terminate": "killall GameThread"
+    },
+    "1d0cc0070d1080": {
+      "command": "cd /home/danik/Games/NFSIISE; ./nfs2se",
+      "title": "Need for Speed II",
+      "subtext": "Special Edition",
+      "line3": "1997",
+      "line4": "Electronic Arts",
+      "terminate": ""
+    },
+    "1d0ec0070d1080": {
+      "command": "cd /home/danik/.openlara/DATA;openlara",
+      "title": "Tomb Raider",
+      "subtext": "Openlara Engine",
+      "line3": "1996 Core Design",
+      "line4": "Eidos Interactive",
+      "terminate": ""
+    },
+    "1d0dc0070d1080": {
+      "command": "/usr/bin/gzdoom -iwad /home/danik/Games/Doom WADs/DOOM.WAD -file \"/home/danik/Games/Doom WADs/VoxelDoom_v2.4.pk3\"",
+      "title": "Voxel DOOM",
+      "subtext": "GZDoom Engine",
+      "line3": "1993",
+      "line4": "id Software",
+      "terminate": ""
+    },
+    "1d0fc0070d1080": {
+      "command": "/usr/bin/gzdoom -iwad /home/danik/Games/Doom WADs/DOOM2.WAD -file \"/home/danik/Games/Doom WADs/VoxelDoom_v2.4.pk3\"",
+      "title": "Voxel DOOM II",
+      "subtext": "GZDoom Engine",
+      "line3": "1994",
+      "line4": "id Software",
+      "terminate": ""
+    },
+    "1d07bf070d1080": {
+      "command": "steam steam://rungameid/1551360",
+      "title": "Forza Horizon 5",
+      "subtext": "Steam",
+      "line3": "2021 Playground",
+      "line4": "XBOX Game Studios",
+      "terminate": "killall ForzaHorizon5.exe"
+    },
+    "1d09bf070d1080": {
+      "command": "steam steam://rungameid/3017860",
+      "title": "DOOM: The Dark Ages",
+      "subtext": "Steam",
+      "line3": "2025",
+      "line4": "id Software",
+      "terminate": "killall Titan"
+    },
+    "1d88bf070d1080": {
+      "command": "/usr/bin/gzdoom -iwad /home/danik/Games/WAD/DOOM.WAD -file /home/danik/Games/WAD/PB-0_1_0-alpha.pk3",
+      "title": "Project Brutality",
+      "subtext": "DOOM",
+      "line3": "1993",
+      "line4": "id Software",
+      "terminate": ""
+    },
+    "1d85bf070d1080": {
+      "command": "/usr/bin/gzdoom -iwad /home/danik/Games/WAD/DOOM2.WAD -file /home/danik/Games/WAD/PB-0_1_0-alpha.pk3",
+      "title": "Project Brutality",
+      "subtext": "DOOM II",
+      "line3": "1994",
+      "line4": "id Software",
+      "terminate": ""
+    },
+    "1d86bf070d1080": {
+      "command": "cd /home/danik/Games/quake; vkquake",
+      "title": "Quake",
+      "subtext": "vkquake Engine",
+      "line3": "1996",
+      "line4": "id Software",
+      "terminate": ""
+    }
+  },
+  "settings": {
+    "removal_delay": 0.0,
+    "confirm_sensitive_apps": false
+  }
+}
