@@ -19,7 +19,9 @@
     }
   },
   "settings": {
-    "removal_delay": 0.0,
-    "confirm_sensitive_apps": false
+   "removal_delay": 0.0,
+   "kill_process_tree": True,
+   "desktop_notifications": True,
+   "notification_icon": "/home/danik/danik/rfidisk/floppy.webp"
   }
 }
