@@ -51,8 +51,6 @@ class RFIDLauncher:
         self.active_process = None
         self.process_tree_pids = []
         self.running = True
-        self.is_windows = platform.system() == "Windows"
-        self.is_linux = platform.system() == "Linux"
         self.last_unknown_tag = None
         self.serial_error_count = 0
         self.max_serial_errors = 5
@@ -270,7 +268,7 @@ class RFIDLauncher:
         if self.recovery_mode or self.reconnecting:
             return False
             
-        if not self.is_linux or not self.config["settings"].get("desktop_notifications", True):
+        if not self.config["settings"].get("desktop_notifications", True):
             return False
             
         try:
@@ -322,18 +320,11 @@ class RFIDLauncher:
             # Send desktop notification (only on first launch)
             self.send_desktop_notification(tag_title, tag_subtext)
             
-            if self.is_windows:
-                process = subprocess.Popen(
-                    app_command, 
-                    shell=True,
-                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
-                )
-            else:
-                process = subprocess.Popen(
-                    app_command, 
-                    shell=True,
-                    preexec_fn=os.setsid
-                )
+            process = subprocess.Popen(
+                app_command, 
+                shell=True,
+                preexec_fn=os.setsid
+            )
             
             self.active_process = process
             self.app_was_launched_by_us = True  # Mark that we launched this app
@@ -356,18 +347,11 @@ class RFIDLauncher:
             # Use custom terminate command
             print(f"Using custom terminate command: {terminate_command}")
             try:
-                if self.is_windows:
-                    process = subprocess.Popen(
-                        terminate_command, 
-                        shell=True,
-                        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
-                    )
-                else:
-                    process = subprocess.Popen(
-                        terminate_command, 
-                        shell=True,
-                        preexec_fn=os.setsid
-                    )
+                process = subprocess.Popen(
+                    terminate_command, 
+                    shell=True,
+                    preexec_fn=os.setsid
+                )
                 # Wait a bit for the terminate command to take effect
                 time.sleep(2)
                 print("Custom terminate command executed")
@@ -387,17 +371,13 @@ class RFIDLauncher:
         print(f"Standard termination: {self.active_process.pid}")
         
         try:
-            if self.is_windows:
-                subprocess.run(['taskkill', '/F', '/T', '/PID', str(self.active_process.pid)], 
-                             capture_output=True, timeout=5)
-            else:
-                try:
-                    os.killpg(os.getpgid(self.active_process.pid), signal.SIGTERM)
-                    time.sleep(2)
-                    if self.active_process.poll() is None:
-                        os.killpg(os.getpgid(self.active_process.pid), signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
+            try:
+                os.killpg(os.getpgid(self.active_process.pid), signal.SIGTERM)
+                time.sleep(2)
+                if self.active_process.poll() is None:
+                    os.killpg(os.getpgid(self.active_process.pid), signal.SIGKILL)
+            except ProcessLookupError:
+                pass
                     
         except Exception as e:
             print(f"Standard termination error: {e}")
@@ -548,7 +528,31 @@ class RFIDLauncher:
                 pass
         print(f"RFIDisk v.{VERSION} stopped")
 
+def print_warning():
+    """Print warning message in red text"""
+    RED = '\033[91m'
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+    
+    warning_message = [
+     
+        "",
+        "This software can automatically launch applications.",
+        "Make sure your configuration only contains",
+        "trusted commands to avoid potential security risks.            ",
+        ""
+    ]
+    
+    print(f"")
+    print(f"{RED}{BOLD}WARNING! USE AT YOUR OWN RISK!!!{RESET}")
+
+    for line in warning_message:
+        print(f"{BOLD}{line}{RESET}")
+
 def main():
+    # Print warning message first
+    print_warning()
+        
     launcher = RFIDLauncher()
     try:
         launcher.run()
