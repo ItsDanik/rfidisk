@@ -12,34 +12,26 @@ import signal
 CONFIG_FILE = "rfidisk_config.json"
 
 # Version number
-VERSION = "0.4b"
+VERSION = "0.5"
 
 # Default configuration
 default_config = {
     "serial_port": "/dev/rfidisk",
     "rfid_tags": {
         "a1b2c3d4": {
-            "command": "./myapp1.sh",
-            "title": "Text Editor",
-            "subtext": "Edit text files",
-            "line3": "v1.2.3",
-            "line4": "Ready",
-            "terminate": ""
-        },
-        "e5f6a7b8": {
-            "command": "./myapp2.sh", 
-            "title": "Calculator",
-            "subtext": "Perform calculations", 
-            "line3": "v2.1.0",
-            "line4": "Ready",
-            "terminate": ""
+            "command": "Placeholder",
+            "title": "Example",
+            "subtext": "Delete this entry",
+            "line3": "after you have made",
+            "line4": "your own ones.",
+            "terminate": "(or don't :))"
         }
     },
     "settings": {
         "removal_delay": 0.0,
         "kill_process_tree": True,
         "desktop_notifications": True,
-        "notification_icon": "/home/danik/danik/rfidisk/floppy.png"
+        "notification_icon": "/home/path/to/rfidisk/floppy.png"
     }
 }
 
@@ -236,16 +228,22 @@ class RFIDLauncher:
         # Store the current display state
         self.last_display_state = (title, subtext, line3, line4)
         
+        # Truncate strings to 21 characters to save RAM
+        title_trunc = title[:20]
+        subtext_trunc = subtext[:20]
+        line3_trunc = line3[:20]
+        line4_trunc = line4[:20]
+        
         if not self.serial_conn or not self.serial_conn.is_open:
             if not self.reconnect_serial():
                 return False
             
         try:
             # Escape any pipes in the strings
-            title_esc = title.replace('|', '_')
-            subtext_esc = subtext.replace('|', '_')
-            line3_esc = line3.replace('|', '_')
-            line4_esc = line4.replace('|', '_')
+            title_esc = title_trunc.replace('|', '_')
+            subtext_esc = subtext_trunc.replace('|', '_')
+            line3_esc = line3_trunc.replace('|', '_')
+            line4_esc = line4_trunc.replace('|', '_')
             
             # Short command: D|title|subtext|line3|line4
             command = f"D|{title_esc}|{subtext_esc}|{line3_esc}|{line4_esc}\n"
@@ -318,7 +316,7 @@ class RFIDLauncher:
             
         try:
             # Send desktop notification (only on first launch)
-            self.send_desktop_notification(tag_title, tag_subtext)
+            self.send_desktop_notification("RFIDisk Inserted", f"{tag_title}\n{tag_subtext}")
             
             process = subprocess.Popen(
                 app_command, 
