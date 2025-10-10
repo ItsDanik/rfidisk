@@ -1,5 +1,6 @@
 # rfidisk
 A complete RFID based app launcher for Linux.
+<img width="1794" height="973" alt="3D" src="https://github.com/user-attachments/assets/7a0db381-44d1-4340-8a02-d670594e7833" />
 
 <img src="https://github.com/user-attachments/assets/9dd670ca-56e6-4e30-9336-dc6832b9829a" width="240">
 
@@ -38,4 +39,21 @@ NFC NTAG213 25mm 13.56MHz (as many as you need, one per floppy)
 Soldering iron  
 3D Printer  
 A PC running Linux  
+
+## Hardware Assembly  
+### Arduino Pinout
+
+Connect the devices to the arduino as shown below. Note: You will have to cut solder on the RC522 board because of space restrictions, it won't fit the case otherwise. You can use connectors on all other connections (Arduino & OLED module).
+
+>RC522 VCC ----- 3.3V  
+>RC522 GND ----- GND  
+>RC522 RST ----- 9  
+>RC522 MISO ---- 12  
+>RC522 MOSI ---- 11  
+>RC522 SCK ----- 13  
+>RC522 SDA ----- 10  
+>OLED VCC ------ 5V  
+>OLED GND ------ GND  
+>OLED SCL ------ A5  
+>OLED SDA ------ A4  
 
