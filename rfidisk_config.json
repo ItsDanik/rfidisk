@@ -1,27 +1,19 @@
 {
   "serial_port": "/dev/rfidisk",
   "rfid_tags": {
-    "33f31a2a": {
-      "command": "lutris",
-      "title": "Lutris",
-      "subtext": "Game Launcher",
-      "line3": "Example",
-      "line4": "Text",
-      "terminate": ""
-    },
-    "1d09bf070d1080": {
-      "command": "steam steam://rungameid/3017860",
-      "title": "DOOM: The Dark Ages",
-      "subtext": "Steam",
-      "line3": "2025",
-      "line4": "id Software",
-      "terminate": "killall Titan"
-    }
+        "a1b2c3d4": {
+            "command": "Placeholder",
+            "title": "Example",
+            "subtext": "Delete this entry",
+            "line3": "after you have made",
+            "line4": "your own ones.",
+            "terminate": "(or don't :))"
+        }
   },
   "settings": {
    "removal_delay": 0.0,
    "kill_process_tree": True,
    "desktop_notifications": True,
-   "notification_icon": "/home/danik/danik/rfidisk/floppy.png"
+   "notification_icon": "/home/path/to/rfidisk/floppy.png"
   }
 }
