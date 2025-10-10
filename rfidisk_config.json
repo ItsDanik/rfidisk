@@ -1,19 +1,17 @@
 {
-  "serial_port": "/dev/rfidisk",
-  "rfid_tags": {
-        "a1b2c3d4": {
-            "command": "Placeholder",
-            "title": "Example",
-            "subtext": "Delete this entry",
-            "line3": "after you have made",
-            "line4": "your own ones.",
-            "terminate": "(or don't :))"
-        }
-  },
   "settings": {
-   "removal_delay": 0.0,
-   "kill_process_tree": True,
-   "desktop_notifications": True,
-   "notification_icon": "/home/path/to/rfidisk/floppy.png"
+    "serial_port": "/dev/rfidisk",
+    "removal_delay": 0.0,
+    "desktop_notifications": true
+  },
+  "rfid_tags": {
+    "a1b2c3d4": {
+      "command": "Placeholder",
+      "line1": "Example",
+      "line2": "Delete this entry",
+      "line3": "after you have made",
+      "line4": "your own ones.",
+      "terminate": "(or don't :))"
+    }
   }
 }
