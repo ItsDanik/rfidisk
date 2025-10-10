@@ -69,7 +69,8 @@ OLED SDA ------ A4
 - Screw the OLED module on the 3D Printed Shell using 4x 4mm screws.  
 - Screw the two boards on the 3D Printed PCB Support Piece using 8x 4mm screws.  
 - Screw the whole PCB Support to the roof of the case using 4x 4mm screws.  
-- Screw the bottom 3D Printed part to the bottom of the shell using 4x 6mm screws.  
+- Screw the bottom 3D Printed part to the bottom of the shell using 4x 6mm screws.
+- Connect the device to the PC, using a USB type-B to type-A cable.
 
 ### RFIDisk Floppies
 
@@ -111,6 +112,16 @@ If using arduino-cli:
 ```arduino-cli upload rfidisk.ino -p /dev/ttyACM0 -b arduino:avr:uno```  
 
 > [!WARNING]
-> If your setup has another device path for the arduino, replace /dev/ttyACM0 with yours.
+> If your setup has another device path for the arduino, replace /dev/ttyACM0 with yours.  
+
+If everything was succesful, the OLED Display should now show a logo (RFIDisk).  
 
 
+### Configuring rfidisk
+Open the rfidisk_config.json file (use any editor you like), and tweak the topmost setting:  
+
+```"serial_port": "/dev/rfidisk",```  
+
+Replace "dev/rfidisk" with your Arduino's actual path (likely /dev/ttyACM0).  
+To set up a symlink and use a static custom path like /dev/rfidisk, continue reading.  
+You can also change any of the other settings in rfidisk_config.json, according to your preferences.
