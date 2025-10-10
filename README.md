@@ -24,6 +24,9 @@ Use this **at your own risk!!** This project contains a script that can pretty m
 Do not import other people's configurations, except if you really know what you're doing.  
 **Always** manually check the configuration file for malicious commands!
 
+> [!IMPORTANT]
+This project, including this README, are work in progress. There may be bugs, errors, omissions etc.
+
 ## What you'll need
 ### Bill of Materials:
 1x Arduino UNO (or compatible)  
