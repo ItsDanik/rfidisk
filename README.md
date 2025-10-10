@@ -31,7 +31,7 @@ Do not import other people's configurations, except if you really know what you'
 1x RFID Reader Module (**MFRC522**)  
 11x Jumper Wires ~15cm (Female to Male)  
 1x USB Cable (type B to type A)
-8x 4mm self-tapping M2 Screws  
+16x 4mm self-tapping M2 Screws  
 4x 6mm self-tapping M2 Screws  
 NFC NTAG213 25mm 13.56MHz (as many as you need, one per floppy)
 
@@ -41,19 +41,33 @@ Soldering iron
 A PC running Linux  
 
 ## Hardware Assembly  
-### Arduino Pinout
+
+### Arduino Pinout  
 
 Connect the devices to the arduino as shown below. Note: You will have to cut solder on the RC522 board because of space restrictions, it won't fit the case otherwise. You can use connectors on all other connections (Arduino & OLED module).
 
+
+> [!CAUTION]  
+> Connecting the RC522 board to 5V **WILL fry it!** Don't ask me how I know :)  
+> Always double-check that 3.3V goes to RC522 and 5V goes to OLED module.  
+
 >RC522 VCC ----- 3.3V  
->RC522 GND ----- GND  
+>RC522 GND ---- GND  
 >RC522 RST ----- 9  
->RC522 MISO ---- 12  
->RC522 MOSI ---- 11  
+>RC522 MISO --- 12  
+>RC522 MOSI --- 11  
 >RC522 SCK ----- 13  
 >RC522 SDA ----- 10  
 >OLED VCC ------ 5V  
->OLED GND ------ GND  
+>OLED GND ----- GND  
 >OLED SCL ------ A5  
 >OLED SDA ------ A4  
+
+###  Case
+
+- Go to **(PlaceHolder MakerWorld URL)** and 3D print the project.  
+- Screw the OLED module on the 3D Printed Shell using 4x 4mm screws.  
+- Screw the two boards on the 3D Printed PCB Support Piece using 8x 4mm screws.  
+- Screw the whole PCB Support to the roof of the case using 4x 4mm screws.  
+- Screw the bottom 3D Printed part to the bottom of the shell using 4x 6mm screws.  
 
