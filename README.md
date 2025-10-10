@@ -247,7 +247,7 @@ Paste this into the empty file:
 ```
 [Unit]
 Description=RFIDisk Arduino Monitor Script
-After=graphical-session.target
+After=default.target
 
 [Service]
 Type=simple
@@ -275,3 +275,51 @@ systemctl --user status rfidisk.service
 ```  
 
 Reboot to test!  
+
+## Bugs / Quirks:
+### Proton Quirks
+When an application is launched via proton (ie most Steam games), for some reason the USB ports  
+on the host machine get reset. That means that the arduino resets. This is a known issue with  
+Proton, you can check it out [here](https://github.com/ValveSoftware/Proton/issues/6927).  
+To combat this, as a workaround, an overly-complex connection recovery routine has been implemented,  
+to avoid double launching of an app, and double notifications etc. It seems to be working ok, but  
+it is a hack. If anyone finds a better way to handle this, like prevent the USB device from disconnecting  
+when Proton initializes, please let me know.  
+
+### Steam Games
+To launch steam games, in the "command" field of the entry, use:  
+```steam steam://rungameid/1234567```
+where "1234567" is the gameid of the game you want to play.  
+To find the gameid, just look at the url address of the Store  
+page of the game. For example, Cyberpunk 2077's store page URL is  
+```https://store.steampowered.com/app/1091500/Cyberpunk_2077/```  
+This means, that the gameid of Cyberpunk 2077 is 1091500.  
+But also, terminating games that were launched cannot be automated. We have to manually specify a  
+"terminate" command, that's what this field is reserved for in rfid_config.json entries.  
+To determine the command:  
+- Run the game manually
+- Open a proccess monitor (htop, btop etc)
+- Find the name of the process
+- The terminate command is "killall (name of the process)"
+In the example of Cyberpunk 2077, the proccess name is "GameThread".
+
+After all this work, now we can build a Steam game entry:
+```
+"1d0abf070d1080": {
+      "command": "steam steam://rungameid/1091500",
+      "title": "Cyberpunk 2077",
+      "subtext": "Phantom Liberty",
+      "line3": "2020-2023",
+      "line4": "CDProjectRed",
+      "terminate": "killall GameThread"
+    },
+```
+
+### TODO/Ideas List
+- Find a solution for the known issue with Proton (USB Momentarily Disconnects and Arduino reboots)  
+- Explore GameScope support (test game launching and make use of GameScope notification system)  
+- Potentially package it as a DeckyLoader plugin?  
+- Improve notification  
+- Improve handling of field strings. Truncate to 21 characters, maybe less for lines 3&4 to save RAM.  
+- Arduino: If RAM allows, addition of 32x32 bitmap icons to display on the bottom right of the OLED
+  screen: (Steam, Linux Native, Emulator, etc)
