@@ -131,12 +131,6 @@ Open the rfidisk_config.json file (use any editor you like), and tweak the topmo
 Replace "dev/rfidisk" with your Arduino's actual path (likely /dev/ttyACM0).  
 To set up a udev rule with a static custom path like /dev/rfidisk, keep reading.  
 
-Also, tweak the setting at the bottom:  
-
-```"notification_icon": "/home/path/to/rfidisk/floppy.png"```
-
-And replace "/home/path/to/rfidisk/floppy.png" to the actual location of the file, inside the project root directory.  
-
 You can also change any of the other settings in rfidisk_config.json, according to your preferences.  
 Everything now should be set to go.  
 
@@ -153,8 +147,8 @@ Remove the disk, open the file and edit the last entry:
 ```
 "a1b2c3d4": {
 "command": "",  
-"title": "new entry",  
-"subtext": "configure me",  
+"line1": "new entry",  
+"line2": "configure me",  
 "line3": "edit rfidisk_config.json",  
 "line4": "a1b2c3d4",  
 "terminate": ""
@@ -163,8 +157,8 @@ Remove the disk, open the file and edit the last entry:
 
 The "a1b2c3d4" at the top will be different and is the unique ID of the NFC tag. Don't touch this value.  
 "command": Type here the command you want to execute when this disk is inserted.  
-"title": This is the first line that will be drawn on the OLED screen. Usually the first two rows should be used for the title of the application.  
-"subtext": This is the second line that will be drawn on the OLED screen.  
+"line1": This is the first line that will be drawn on the OLED screen. Usually the first two rows should be used for the title of the application.  
+"line2": This is the second line that will be drawn on the OLED screen.  
 "line3": Third line, you can use it for whatever you want, for example year of release.  
 "line4": Fourth line, you can use it for developer or publisher etc.  
 
@@ -173,8 +167,8 @@ Here is an example of an entry, properly configured and formatted:
 ```
 "1d0dc0070d1080": {
       "command": "/usr/bin/gzdoom -iwad /home/user/DOOM.WAD",
-      "title": "DOOM",
-      "subtext": "GZDoom Engine",
+      "line1": "DOOM",
+      "line2": "GZDoom Engine",
       "line3": "1993",
       "line4": "id Software",
       "terminate": ""
@@ -314,8 +308,8 @@ After all this work, now we can build a Steam game entry:
 ```
 "1d0abf070d1080": {
       "command": "steam steam://rungameid/1091500",
-      "title": "Cyberpunk 2077",
-      "subtext": "Phantom Liberty",
+      "line1": "Cyberpunk 2077",
+      "line2": "Phantom Liberty",
       "line3": "2020-2023",
       "line4": "CDProjectRed",
       "terminate": "killall GameThread"
@@ -326,5 +320,5 @@ After all this work, now we can build a Steam game entry:
 - Find a solution for the known issue with Proton (USB Momentarily Disconnects and Arduino reboots)  
 - Explore GameScope support (test game launching and make use of GameScope notification system)  
 - Potentially package it as a DeckyLoader plugin?  
-- Arduino: If RAM allows, addition of 32x32 bitmap icons to display on the bottom right of the OLED
-  screen: (Steam, Linux Native, Emulator, etc)
+- Migrate icons from the arduino memory to the host PC. This way we can transmit any number of icons
+  to a fixed 32x32 buffer using serial.
