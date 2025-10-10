@@ -51,17 +51,17 @@ Connect the devices to the arduino as shown below. Note: You will have to cut so
 > Connecting the RC522 board to 5V **WILL fry it!** Don't ask me how I know :)  
 > Always double-check that 3.3V goes to RC522 and 5V goes to OLED module.  
 
->RC522 VCC ----- 3.3V  
->RC522 GND ---- GND  
->RC522 RST ----- 9  
->RC522 MISO --- 12  
->RC522 MOSI --- 11  
->RC522 SCK ----- 13  
->RC522 SDA ----- 10  
->OLED VCC ------ 5V  
->OLED GND ----- GND  
->OLED SCL ------ A5  
->OLED SDA ------ A4  
+RC522 VCC ----- 3.3V  
+RC522 GND ---- GND  
+RC522 RST ----- 9  
+RC522 MISO --- 12  
+RC522 MOSI --- 11  
+RC522 SCK ----- 13  
+RC522 SDA ----- 10  
+OLED VCC ------ 5V  
+OLED GND ----- GND  
+OLED SCL ------ A5  
+OLED SDA ------ A4  
 
 ###  Case
 
@@ -70,4 +70,18 @@ Connect the devices to the arduino as shown below. Note: You will have to cut so
 - Screw the two boards on the 3D Printed PCB Support Piece using 8x 4mm screws.  
 - Screw the whole PCB Support to the roof of the case using 4x 4mm screws.  
 - Screw the bottom 3D Printed part to the bottom of the shell using 4x 6mm screws.  
+
+### RFIDisk Floppies
+
+- Use the corresponding plate on the MakerWorld Project.
+- Plate 4 is for single disk, plate 5 is for printing 4 disks in one go.
+- The printing pauses on layer 7, that's when you go and stick the NFC tags on the designated area. Be careful to center the sticker. The sticker should not touch the walls of the area. Feel free to manually lower the bed using your printer's controls to get a better view/fit your hand.
+- When you have placed the sticker(s) press resume. The printer will seal the NFC tags at the next layer.
+
+> [!NOTE]
+> You can also use real 3.5" floppy disks and stick the sticker at the center at the bottom (hub).
+> If you experience weak signal and/or inconsistencies in reading, the metal surface of the disk is at fault.
+> You can try to open carefully the disk and remove the whole disk, and stick the sticker through the hole on the inside.
+
+
 
