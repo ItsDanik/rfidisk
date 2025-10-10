@@ -3,7 +3,6 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
-#include <avr/wdt.h>  // Add watchdog timer control
 
 #define RST_PIN 9
 #define SS_PIN 10
@@ -13,6 +12,7 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);
 
 bool tagPresent = false;
 String lastTagUid = "";
+String version = "v0.7";
 
 const unsigned char rfidisk_logo[] PROGMEM = {
 0xfc, 0x7f, 0x77, 0xe1, 0xc0, 0x1c, 0x00, 0xe6, 0x70, 0x77, 0x31, 0xc0, 0x1c, 0x00, 0xe6, 0x70, 
@@ -45,9 +45,7 @@ const unsigned char steam_icon[] PROGMEM = {
 };
 
 void setup() {
-  // Disable watchdog first thing to prevent reboots
-  wdt_disable();
-  
+ 
   Serial.begin(9600);
   
   // Initialize display
@@ -58,9 +56,13 @@ void setup() {
   // Show boot logo
   display.clearDisplay();
   display.drawBitmap(39, 28, rfidisk_logo, 50, 11, SH110X_WHITE);
+  display.setTextColor(SH110X_WHITE);
+  display.setCursor(86, 56);
+  display.print("FW ");
+  display.print(String(version));
   display.display();
-  delay(2000);
-  
+  delay(800);
+
   // Initialize RFID
   SPI.begin();
   mfrc522.PCD_Init();
@@ -68,17 +70,17 @@ void setup() {
   Serial.println("OK");
 }
 
-void updateDisplay(const char* title, const char* subtext, const char* line3, const char* line4, byte iconType) {
+void updateDisplay(const char* line1, const char* line2, const char* line3, const char* line4, byte iconType) {
   display.clearDisplay();
   display.setTextColor(SH110X_WHITE);
   display.setTextSize(1);
 
-  // Top section (title and subtext)
+  // Top section (line1 and line2)
   display.setCursor(5, 8);
-  display.print(title);
+  display.print(line1);
   
   display.setCursor(5, 20);
-  display.print(subtext);
+  display.print(line2);
 
   // Horizontal divider line
   display.drawLine(0, 31, 128, 31, SH110X_WHITE);
@@ -92,7 +94,6 @@ void updateDisplay(const char* title, const char* subtext, const char* line3, co
 
   // Draw icon in bottom right based on iconType
   if (iconType > 0) {
-    // Position: 128-32=96 (right edge), 64-32=32 (bottom edge)
     switch(iconType) {
       case 1: // Floppy disk icon
         display.drawBitmap(96, 32, floppy_icon, 32, 32, SH110X_WHITE);
@@ -135,8 +136,6 @@ bool isTagPresent() {
 }
 
 void loop() {
-  // Reset watchdog timer each loop to prevent timeouts
-  wdt_reset();
   
   // Process serial commands immediately
   if (Serial.available() > 0) {
@@ -144,7 +143,7 @@ void loop() {
     cmd.trim();
     
     if (cmd.startsWith("D|")) {
-      // Parse display command: D|title|subtext|line3|line4|iconType
+      // Parse display command: D|line1|line2|line3|line4|iconType
       int p1 = cmd.indexOf('|');
       int p2 = cmd.indexOf('|', p1 + 1);
       int p3 = cmd.indexOf('|', p2 + 1);
@@ -152,13 +151,13 @@ void loop() {
       int p5 = cmd.indexOf('|', p4 + 1);
       
       if (p1 != -1 && p2 != -1 && p3 != -1 && p4 != -1 && p5 != -1) {
-        String title = cmd.substring(p1 + 1, p2);
-        String subtext = cmd.substring(p2 + 1, p3);
+        String line1 = cmd.substring(p1 + 1, p2);
+        String line2 = cmd.substring(p2 + 1, p3);
         String line3 = cmd.substring(p3 + 1, p4);
         String line4 = cmd.substring(p4 + 1, p5);
         byte iconType = cmd.substring(p5 + 1).toInt();
         
-        updateDisplay(title.c_str(), subtext.c_str(), line3.c_str(), line4.c_str(), iconType);
+        updateDisplay(line1.c_str(), line2.c_str(), line3.c_str(), line4.c_str(), iconType);
       }
     }
   }
