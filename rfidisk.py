@@ -12,7 +12,7 @@ import signal
 CONFIG_FILE = "rfidisk_config.json"
 
 # Version number
-VERSION = "0.5"
+VERSION = "0.6"
 
 # Default configuration
 default_config = {
@@ -180,7 +180,8 @@ class RFIDLauncher:
                     tag_config.get("title", "App"), 
                     tag_config.get("subtext", ""),
                     tag_config.get("line3", ""),
-                    tag_config.get("line4", "")
+                    tag_config.get("line4", ""),
+                    "1"  # Restore with disk icon
                 )
                 print(f"Silently restored display for {tag_id}")
             else:
@@ -189,13 +190,14 @@ class RFIDLauncher:
                     "State Error",
                     "Tag config missing",
                     "Check rfidisk_config.json",
-                    tag_id
+                    tag_id,
+                    "0"
                 )
         else:
             # No active tag or app wasn't launched by us, restore ready state
             self.active_tag = None
             self.app_was_launched_by_us = False
-            self.send_display_command("Ready", "Insert Disk", "", f"RFIDisk v{VERSION}")
+            self.send_display_command("Ready", "Insert Disk", "", f"RFIDisk v{VERSION}", "0")
             print("Restored ready state")
         
         # Disable recovery mode after recovery is complete
@@ -223,16 +225,16 @@ class RFIDLauncher:
         time.sleep(2)
         return self.connect_serial()
 
-    def send_display_command(self, title, subtext, line3="", line4=""):
+    def send_display_command(self, title, subtext, line3="", line4="", icon_type="0"):
         """Send display command with error handling and state tracking"""
         # Store the current display state
         self.last_display_state = (title, subtext, line3, line4)
         
-        # Truncate strings to 21 characters to save RAM
+        # Truncate strings to 20 characters to save RAM
         title_trunc = title[:20]
         subtext_trunc = subtext[:20]
-        line3_trunc = line3[:20]
-        line4_trunc = line4[:20]
+        line3_trunc = line3[:14]
+        line4_trunc = line4[:14]
         
         if not self.serial_conn or not self.serial_conn.is_open:
             if not self.reconnect_serial():
@@ -245,8 +247,8 @@ class RFIDLauncher:
             line3_esc = line3_trunc.replace('|', '_')
             line4_esc = line4_trunc.replace('|', '_')
             
-            # Short command: D|title|subtext|line3|line4
-            command = f"D|{title_esc}|{subtext_esc}|{line3_esc}|{line4_esc}\n"
+            # Updated command: D|title|subtext|line3|line4|iconType
+            command = f"D|{title_esc}|{subtext_esc}|{line3_esc}|{line4_esc}|{icon_type}\n"
             self.serial_conn.write(command.encode())
             self.serial_conn.flush()
             return True
@@ -426,12 +428,13 @@ class RFIDLauncher:
                 
                 self.active_tag = tag_id
                 
-                # Update display
+                # Update display with icon_type=1 (disk icon)
                 self.send_display_command(
                     tag_config.get("title", "App"), 
                     tag_config.get("subtext", ""),
                     tag_config.get("line3", ""),
-                    tag_config.get("line4", "")
+                    tag_config.get("line4", ""),
+                    "1"  # Add icon for disk insertion
                 )
                 
                 # Launch app if command is specified and not already launched by us
@@ -451,12 +454,13 @@ class RFIDLauncher:
                 self.last_unknown_tag = tag_id
                 new_tag_id = self.create_or_update_new_entry(tag_id)
                 
-                # Show new entry screen
+                # Show new entry screen with icon_type=0 (no icon)
                 self.send_display_command(
                     "new entry",
                     "configure me",
                     "edit rfidisk_config.json",
-                    new_tag_id
+                    new_tag_id,
+                    "0"
                 )
                 self.send_desktop_notification("New Tag", f"Tag {new_tag_id} added")
                 print(f"New tag: {tag_id}")
@@ -472,7 +476,7 @@ class RFIDLauncher:
                 if self.active_tag == tag_id:
                     self.close_current_app()
                     self.active_tag = None
-                    self.send_display_command("Ready", "Insert Disk", "", f"RFIDisk v{VERSION}")
+                    self.send_display_command("Ready", "Insert Disk", "", f"RFIDisk v{VERSION}", "0")
                     print("App closed")
 
     def read_serial(self):
@@ -503,8 +507,8 @@ class RFIDLauncher:
         
         print("Ready")
         
-        # Send initial display
-        self.send_display_command("Ready", "Insert Disk", "", f"RFIDisk v{VERSION}")
+        # Send initial display with icon_type=0 (no icon)
+        self.send_display_command("Ready", "Insert Disk", "", f"RFIDisk v{VERSION}", "0")
         
         try:
             while self.running:
