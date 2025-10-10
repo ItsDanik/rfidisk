@@ -321,4 +321,4 @@ After all this work, now we can build a Steam game entry:
 - Explore GameScope support (test game launching and make use of GameScope notification system)  
 - Potentially package it as a DeckyLoader plugin?  
 - Migrate icons from the arduino memory to the host PC. This way we can transmit any number of icons
-  to a fixed 32x32 buffer using serial.
+  to a fixed 32x32 buffer using serial, not worry about Arduino RAM, and also allow for custom icons.
