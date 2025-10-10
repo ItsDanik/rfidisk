@@ -36,7 +36,7 @@ default_config = {
         }
     },
     "settings": {
-        "removal_delay": 2.0,
+        "removal_delay": 0.0,
         "kill_process_tree": True,
         "desktop_notifications": True,
         "notification_icon": "/home/danik/danik/rfidisk/floppy.png"
