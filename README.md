@@ -130,8 +130,15 @@ Open the rfidisk_config.json file (use any editor you like), and tweak the topmo
 
 Replace "dev/rfidisk" with your Arduino's actual path (likely /dev/ttyACM0).  
 To set up a udev rule with a static custom path like /dev/rfidisk, keep reading.  
+
+Also, tweak the setting at the bottom:  
+
+```"notification_icon": "/home/path/to/rfidisk/floppy.png"```
+
+And replace "/home/path/to/rfidisk/floppy.png" to the actual location of the file, inside the project root directory.  
+
 You can also change any of the other settings in rfidisk_config.json, according to your preferences.  
-Everything now should be set to go.
+Everything now should be set to go.  
 
 ## Using RFIDisk
 
@@ -319,7 +326,5 @@ After all this work, now we can build a Steam game entry:
 - Find a solution for the known issue with Proton (USB Momentarily Disconnects and Arduino reboots)  
 - Explore GameScope support (test game launching and make use of GameScope notification system)  
 - Potentially package it as a DeckyLoader plugin?  
-- Improve notification  
-- Improve handling of field strings. Truncate to 21 characters, maybe less for lines 3&4 to save RAM.  
 - Arduino: If RAM allows, addition of 32x32 bitmap icons to display on the bottom right of the OLED
   screen: (Steam, Linux Native, Emulator, etc)
