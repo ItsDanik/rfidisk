@@ -103,15 +103,19 @@ Make sure to install them. If using arduino-cli:
 The user should be able to get control of the serial port.  
 This means that the user must be in the uucp or dialout group.  
 
-```sudo usermod -a -G dialout $(whoami)```  
-```sudo usermod -a -G uucp $(whoami)```  
+```
+sudo usermod -a -G dialout $(whoami)
+sudo usermod -a -G uucp $(whoami)
+```  
 
 
 ### Compiling and Uploading the arduino sketch  
 If using arduino-cli, go into the directory of the project and type:  
 
-```arduino-cli compile rfidisk.ino -p /dev/ttyACM0 -b arduino:avr:uno```  
-```arduino-cli upload rfidisk.ino -p /dev/ttyACM0 -b arduino:avr:uno```  
+```
+arduino-cli compile rfidisk.ino -p /dev/ttyACM0 -b arduino:avr:uno
+arduino-cli upload rfidisk.ino -p /dev/ttyACM0 -b arduino:avr:uno
+```  
 
 > [!WARNING]
 > If your setup has another device path for the arduino, replace /dev/ttyACM0 with yours.  
@@ -125,7 +129,7 @@ Open the rfidisk_config.json file (use any editor you like), and tweak the topmo
 ```"serial_port": "/dev/rfidisk",```  
 
 Replace "dev/rfidisk" with your Arduino's actual path (likely /dev/ttyACM0).  
-To set up a symlink and use a static custom path like /dev/rfidisk, continue reading.  
+To set up a udev rule with a static custom path like /dev/rfidisk, keep reading.  
 You can also change any of the other settings in rfidisk_config.json, according to your preferences.  
 Everything now should be set to go.
 
@@ -157,7 +161,7 @@ The "a1b2c3d4" at the top will be different and is the unique ID of the NFC tag.
 "line3": Third line, you can use it for whatever you want, for example year of release.  
 "line4": Fourth line, you can use it for developer or publisher etc.  
 
-Here is an example of an entry, properly configured:  
+Here is an example of an entry, properly configured and formatted:  
 
 ```
 "1d0dc0070d1080": {
@@ -180,3 +184,94 @@ Repeat the configuration proccess for as many disks as you need.
 
 ## Post-Installation optimizations
 
+### Create udev rules for static device path
+We'll create two udev rules, let's start with one that ensures USB serial ownership:  
+```
+sudo nano /etc/udev/rules.d/90-tty-acm.rules  
+```
+Paste this into the empty new file:  
+```
+SUBSYSTEM=="tty", KERNEL=="ttyACM[0-9]*", GROUP="uucp", MODE="0660", TAG+="uaccess"
+```
+Save the file (Ctrl-X, y)  
+
+Now, another to set the symlink:  
+```
+sudo nano /etc/udev/rules.d/99-custom-serial.rules
+```
+Paste this into the empty new file:  
+```
+SUBSYSTEM=="tty", ATTRS{idVendor}=="2341", ATTRS{idProduct}=="0043", \
+  SYMLINK+="rfidisk", GROUP="uucp", MODE="0660", TAG+="uaccess"
+```
+Save the file (Ctrl-X, y)
+
+To apply:  
+```
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+sudo udevadm settle
+```
+Unplug the RFIDisk drive and plug it back in. You should now see:  
+```
+ls -l /dev/rifidisk
+```
+
+If successful, remember to update the rfidisk_config.json file:  
+```
+"serial_port": "/dev/rfidisk",
+```
+
+### Make the python script executable
+We can make the script directly executable.  
+To do this, go to the project directory and type: 
+```
+chmod +x rfidisk.py
+```
+Now, you can directly execute the script without having to specify "python":  
+```
+./rfidisk.py
+```
+
+### Make the script run automatically upon login
+We can make the script run silently in the background eveytime we login, by  
+creating a systemd user service:  
+
+```
+mkdir -p ~/.config/systemd/user
+nano ~/.config/systemd/user/rfidisk.service
+```
+
+Paste this into the empty file:  
+
+```
+[Unit]
+Description=RFIDisk Arduino Monitor Script
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/path/to/rfidisk/rfidisk.py
+WorkingDirectory=/home/path/to/rfidisk
+Restart=on-failure
+ExecStartPre=/bin/sleep 1
+
+[Install]
+WantedBy=default.target
+```
+And replace the /home/path/to/rfidisk/ with your actual path where rfidisk resides.  
+Be sure to replace both instances (ExecStart and WorkingDirectory).  
+Save the file (Ctrl+X, y)  
+
+To apply the changes:  
+```
+systemctl --user daemon-reload
+systemctl --user enable rfidisk.service
+systemctl --user start rfidisk.service
+```
+Check if it's running:
+```
+systemctl --user status rfidisk.service
+```  
+
+Reboot to test!  
