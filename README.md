@@ -1,4 +1,4 @@
-# rfidisk
+# RFIDisk
 A complete RFID based app launcher for Linux.
 <img width="1794" height="973" alt="3D" src="https://github.com/user-attachments/assets/7a0db381-44d1-4340-8a02-d670594e7833" />
 
