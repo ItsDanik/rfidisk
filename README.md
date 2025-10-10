@@ -67,7 +67,7 @@ RC522 SDA ----- 10  Arduino
 
 ###  Case
 
-- Go to **(PlaceHolder MakerWorld URL)** and 3D print the project.  
+- Go to [https://makerworld.com/en/models/1875124-rfidisk-drive-disk](https://makerworld.com/en/models/1875124-rfidisk-drive-disk) and 3D print the project.  
 - Screw the OLED module on the 3D Printed Shell using 4x 4mm screws.  
 - Screw the two boards on the 3D Printed PCB Support Piece using 8x 4mm screws.  
 - Screw the whole PCB Support to the roof of the case using 4x 4mm screws.  
