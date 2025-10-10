@@ -12,26 +12,24 @@ import signal
 CONFIG_FILE = "rfidisk_config.json"
 
 # Version number
-VERSION = "0.65"
+VERSION = "0.7"
 
 # Default configuration
 default_config = {
-    "serial_port": "/dev/rfidisk",
+    "settings": {
+        "serial_port": "/dev/rfidisk",
+        "removal_delay": 0.0,
+        "desktop_notifications": True
+    },
     "rfid_tags": {
         "a1b2c3d4": {
             "command": "Placeholder",
-            "title": "Example",
-            "subtext": "Delete this entry",
+            "line1": "Example",
+            "line2": "Delete this entry",
             "line3": "after you have made",
             "line4": "your own ones.",
             "terminate": "(or don't :))"
         }
-    },
-    "settings": {
-        "removal_delay": 0.0,
-        "kill_process_tree": True,
-        "desktop_notifications": True,
-        "notification_icon": "/home/path/to/rfidisk/floppy.png"
     }
 }
 
@@ -84,7 +82,7 @@ class RFIDLauncher:
         
         # Check if there's already a "new entry"
         for existing_id, entry in self.config["rfid_tags"].items():
-            if entry.get("title") == "new entry":
+            if entry.get("line1") == "new entry":
                 new_entry_id = existing_id
                 break
         
@@ -98,8 +96,8 @@ class RFIDLauncher:
             # Create new entry with terminate field
             self.config["rfid_tags"][tag_id] = {
                 "command": "",
-                "title": "new entry",
-                "subtext": "configure me",
+                "line1": "new entry",
+                "line2": "configure me",
                 "line3": "edit rfidisk_config.json",
                 "line4": tag_id,
                 "terminate": ""
@@ -112,7 +110,7 @@ class RFIDLauncher:
 
     def connect_serial(self):
         """Connect to serial port with state recovery"""
-        port = self.config.get("serial_port", default_config["serial_port"])
+        port = self.config["settings"].get("serial_port", default_config["settings"]["serial_port"])
         try:
             if self.serial_conn and self.serial_conn.is_open:
                 self.serial_conn.close()
@@ -179,8 +177,8 @@ class RFIDLauncher:
                 icon_type = self.get_icon_type(tag_config.get("command", ""))
                 # Just update the display silently - NO notifications, NO relaunch
                 self.send_display_command(
-                    tag_config.get("title", "App"), 
-                    tag_config.get("subtext", ""),
+                    tag_config.get("line1", "App"), 
+                    tag_config.get("line2", ""),
                     tag_config.get("line3", ""),
                     tag_config.get("line4", ""),
                     icon_type  # Restore with appropriate icon
@@ -236,14 +234,14 @@ class RFIDLauncher:
         time.sleep(2)
         return self.connect_serial()
 
-    def send_display_command(self, title, subtext, line3="", line4="", icon_type="0"):
+    def send_display_command(self, line1, line2, line3="", line4="", icon_type="0"):
         """Send display command with error handling and state tracking"""
         # Store the current display state
-        self.last_display_state = (title, subtext, line3, line4)
+        self.last_display_state = (line1, line2, line3, line4)
         
         # Truncate strings to 20 characters to save RAM
-        title_trunc = title[:20]
-        subtext_trunc = subtext[:20]
+        line1_trunc = line1[:20]
+        line2_trunc = line2[:20]
         line3_trunc = line3[:14]
         line4_trunc = line4[:14]
         
@@ -253,13 +251,13 @@ class RFIDLauncher:
             
         try:
             # Escape any pipes in the strings
-            title_esc = title_trunc.replace('|', '_')
-            subtext_esc = subtext_trunc.replace('|', '_')
+            line1_esc = line1_trunc.replace('|', '_')
+            line2_esc = line2_trunc.replace('|', '_')
             line3_esc = line3_trunc.replace('|', '_')
             line4_esc = line4_trunc.replace('|', '_')
             
-            # Updated command: D|title|subtext|line3|line4|iconType
-            command = f"D|{title_esc}|{subtext_esc}|{line3_esc}|{line4_esc}|{icon_type}\n"
+            # Updated command: D|line1|line2|line3|line4|iconType
+            command = f"D|{line1_esc}|{line2_esc}|{line3_esc}|{line4_esc}|{icon_type}\n"
             self.serial_conn.write(command.encode())
             self.serial_conn.flush()
             return True
@@ -283,8 +281,9 @@ class RFIDLauncher:
             return False
             
         try:
-            icon_path = self.config["settings"].get("notification_icon", 
-                          default_config["settings"]["notification_icon"])
+            # Get the directory where the script is located
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            icon_path = os.path.join(script_dir, "floppy.png")
             
             # Check if notify-send is available
             result = subprocess.run(['which', 'notify-send'], capture_output=True)
@@ -321,7 +320,7 @@ class RFIDLauncher:
             return False
         return self.active_process.poll() is None
 
-    def launch_application(self, app_command, tag_title, tag_subtext):
+    def launch_application(self, app_command, tag_line1, tag_line2):
         # Don't launch if we already launched this app
         if self.app_was_launched_by_us and self.active_tag:
             print(f"App already launched by us for tag: {self.active_tag}")
@@ -329,7 +328,7 @@ class RFIDLauncher:
             
         try:
             # Send desktop notification (only on first launch)
-            self.send_desktop_notification("RFIDisk Inserted", f"{tag_title}\n{tag_subtext}")
+            self.send_desktop_notification("RFIDisk Inserted", f"{tag_line1}\n{tag_line2}")
             
             process = subprocess.Popen(
                 app_command, 
@@ -347,7 +346,7 @@ class RFIDLauncher:
             return process
         except Exception as e:
             print(f"Launch error: {e}")
-            self.send_desktop_notification("Error", f"Failed: {tag_title}")
+            self.send_desktop_notification("Error", f"Failed: {tag_line1}")
             return None
 
     def terminate_application(self, tag_config):
@@ -444,8 +443,8 @@ class RFIDLauncher:
                 
                 # Update display with appropriate icon
                 self.send_display_command(
-                    tag_config.get("title", "App"), 
-                    tag_config.get("subtext", ""),
+                    tag_config.get("line1", "App"), 
+                    tag_config.get("line2", ""),
                     tag_config.get("line3", ""),
                     tag_config.get("line4", ""),
                     icon_type
@@ -457,8 +456,8 @@ class RFIDLauncher:
                     print(f"Launch: {tag_config['command']}")
                     self.launch_application(
                         tag_config['command'], 
-                        tag_config.get("title", "App"),
-                        tag_config.get("subtext", "")
+                        tag_config.get("line1", "App"),
+                        tag_config.get("line2", "")
                     )
                 elif self.app_was_launched_by_us:
                     print("App already launched by us, not relaunching")
