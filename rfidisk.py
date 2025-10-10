@@ -12,7 +12,7 @@ import signal
 CONFIG_FILE = "rfidisk_config.json"
 
 # Version number
-VERSION = "0.6"
+VERSION = "0.65"
 
 # Default configuration
 default_config = {
@@ -175,13 +175,15 @@ class RFIDLauncher:
             
             tag_config = self.config["rfid_tags"].get(tag_id)
             if tag_config:
+                # Determine icon type based on command
+                icon_type = self.get_icon_type(tag_config.get("command", ""))
                 # Just update the display silently - NO notifications, NO relaunch
                 self.send_display_command(
                     tag_config.get("title", "App"), 
                     tag_config.get("subtext", ""),
                     tag_config.get("line3", ""),
                     tag_config.get("line4", ""),
-                    "1"  # Restore with disk icon
+                    icon_type  # Restore with appropriate icon
                 )
                 print(f"Silently restored display for {tag_id}")
             else:
@@ -202,6 +204,15 @@ class RFIDLauncher:
         
         # Disable recovery mode after recovery is complete
         self.recovery_mode = False
+
+    def get_icon_type(self, command):
+        """Determine icon type based on command"""
+        if command.lower().startswith("steam"):
+            return "2"  # Steam icon
+        elif command.strip():  # Any other command
+            return "1"  # Floppy icon
+        else:  # No command or empty
+            return "0"  # No icon
 
     def reconnect_serial(self):
         """Attempt to reconnect to serial port"""
@@ -428,13 +439,16 @@ class RFIDLauncher:
                 
                 self.active_tag = tag_id
                 
-                # Update display with icon_type=1 (disk icon)
+                # Determine icon type based on command
+                icon_type = self.get_icon_type(tag_config.get("command", ""))
+                
+                # Update display with appropriate icon
                 self.send_display_command(
                     tag_config.get("title", "App"), 
                     tag_config.get("subtext", ""),
                     tag_config.get("line3", ""),
                     tag_config.get("line4", ""),
-                    "1"  # Add icon for disk insertion
+                    icon_type
                 )
                 
                 # Launch app if command is specified and not already launched by us
