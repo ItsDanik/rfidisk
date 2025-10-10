@@ -51,17 +51,19 @@ Connect the devices to the arduino as shown below. Note: You will have to cut so
 > Connecting the RC522 board to 5V **WILL fry it!** Don't ask me how I know :)  
 > Always double-check that 3.3V goes to RC522 and 5V goes to OLED module.  
 
-RC522 VCC ----- 3.3V  
-RC522 GND ---- GND  
-RC522 RST ----- 9  
-RC522 MISO --- 12  
-RC522 MOSI --- 11  
-RC522 SCK ----- 13  
-RC522 SDA ----- 10  
-OLED VCC ------ 5V  
-OLED GND ----- GND  
-OLED SCL ------ A5  
-OLED SDA ------ A4  
+```
+RC522 VCC --- 3.3V  Arduino  
+RC522 GND ---- GND  Arduino  
+RC522 RST ------ 9  Arduino  
+RC522 MISO ---- 12  Arduino  
+RC522 MOSI ---- 11  Arduino  
+RC522 SCK ----- 13  Arduino  
+RC522 SDA ----- 10  Arduino  
+ OLED VCC ----- 5V  Arduino  
+ OLED GND ---- GND  Arduino  
+ OLED SCL ----- A5  Arduino  
+ OLED SDA ----- A4  Arduino  
+```
 
 ###  Case
 
@@ -106,7 +108,7 @@ This means that the user must be in the uucp or dialout group.
 
 
 ### Compiling and Uploading the arduino sketch  
-If using arduino-cli:  
+If using arduino-cli, go into the directory of the project and type:  
 
 ```arduino-cli compile rfidisk.ino -p /dev/ttyACM0 -b arduino:avr:uno```  
 ```arduino-cli upload rfidisk.ino -p /dev/ttyACM0 -b arduino:avr:uno```  
@@ -124,4 +126,57 @@ Open the rfidisk_config.json file (use any editor you like), and tweak the topmo
 
 Replace "dev/rfidisk" with your Arduino's actual path (likely /dev/ttyACM0).  
 To set up a symlink and use a static custom path like /dev/rfidisk, continue reading.  
-You can also change any of the other settings in rfidisk_config.json, according to your preferences.
+You can also change any of the other settings in rfidisk_config.json, according to your preferences.  
+Everything now should be set to go.
+
+## Using RFIDisk
+
+To start RFIDisk go to the directory of the project and type:  
+
+```python3 rfidisk.py```  
+
+The app should initialize, and on the OLED screen of the device you should be able to see a "Ready/Insert Disk" message.  
+Insert a floppy into the drive. A new entry should automatically be created in rfidisk_config.json.  
+Remove the disk, open the file and edit the last entry:  
+
+```
+"a1b2c3d4": {
+"command": "",  
+"title": "new entry",  
+"subtext": "configure me",  
+"line3": "edit rfidisk_config.json",  
+"line4": "a1b2c3d4",  
+"terminate": ""
+}
+```
+
+The "a1b2c3d4" at the top will be different and is the unique ID of the NFC tag. Don't touch this value.  
+"command": Type here the command you want to execute when this disk is inserted.  
+"title": This is the first line that will be drawn on the OLED screen. Usually the first two rows should be used for the title of the application.  
+"subtext": This is the second line that will be drawn on the OLED screen.  
+"line3": Third line, you can use it for whatever you want, for example year of release.  
+"line4": Fourth line, you can use it for developer or publisher etc.  
+
+Here is an example of an entry, properly configured:  
+
+```
+"1d0dc0070d1080": {
+      "command": "/usr/bin/gzdoom -iwad /home/user/DOOM.WAD",
+      "title": "DOOM",
+      "subtext": "GZDoom Engine",
+      "line3": "1993",
+      "line4": "id Software",
+      "terminate": ""
+    },
+```
+> [!TIP]
+> It is recommended that can use an editor like code, which constantly updates on the file.
+> That way you don't have to reload every time you insert a new disk, you can leave it open
+> and prepare multiple disks in one go that way. Also the usage of such an editor ensures
+> proper json formatting.
+
+Save the file, and insert the disk. The application should now launch! Remove the disk and the application closes.  
+Repeat the configuration proccess for as many disks as you need.
+
+## Post-Installation optimizations
+
