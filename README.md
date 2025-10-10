@@ -84,4 +84,33 @@ OLED SDA ------ A4
 > You can try to open carefully the disk and remove the whole disk, and stick the sticker through the hole on the inside.
 
 
+## Software Installation / Configuration
+
+### Prerequisites
+The python script requires psutil and serial modules. Make sure to install them:  
+
+```pip install pyserial psutil```  
+
+Also, you're going to need an Arduino dev environment.  
+The arduino sketch requires MFRC522, Adafruit GFX, and Adafruit SH110X libraries.  
+Make sure to install them. If using arduino-cli:  
+
+```arduino-cli lib install "Adafruit SH110X" "Adafruit GFX" MFRC522```  
+
+The user should be able to get control of the serial port.  
+This means that the user must be in the uucp or dialout group.  
+
+```sudo usermod -a -G dialout $(whoami)```  
+```sudo usermod -a -G uucp $(whoami)```  
+
+
+### Compiling and Uploading the arduino sketch  
+If using arduino-cli:  
+
+```arduino-cli compile rfidisk.ino -p /dev/ttyACM0 -b arduino:avr:uno```  
+```arduino-cli upload rfidisk.ino -p /dev/ttyACM0 -b arduino:avr:uno```  
+
+> [!WARNING]
+> If your setup has another device path for the arduino, replace /dev/ttyACM0 with yours.
+
 
