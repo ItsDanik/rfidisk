@@ -1,8 +1,0 @@
-{
-  "settings": {
-    "serial_port": "/dev/rfidisk",
-    "removal_delay": 0.0,
-    "desktop_notifications": true,
-    "notification_timeout": 8000
-  }
-}
