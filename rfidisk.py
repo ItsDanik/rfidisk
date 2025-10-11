@@ -8,6 +8,7 @@ import os
 import platform
 import psutil
 import signal
+import argparse
 
 CONFIG_FILE = "rfidisk_config.json"
 
@@ -33,6 +34,118 @@ default_config = {
         }
     }
 }
+
+def create_systemd_service():
+    """Create a systemd service file for automatic startup and enable it"""
+    script_path = os.path.abspath(__file__)
+    script_dir = os.path.dirname(script_path)
+    python_path = sys.executable
+    
+    service_content = f"""[Unit]
+Description=RFIDisk Arduino Monitor Script
+After=default.target
+
+[Service]
+Type=simple
+ExecStart={python_path} {script_path}
+WorkingDirectory={script_dir}
+Restart=on-failure
+ExecStartPre=/bin/sleep 1
+
+[Install]
+WantedBy=default.target
+"""
+    
+    # Determine systemd user directory
+    user_systemd_dir = os.path.expanduser("~/.config/systemd/user")
+    os.makedirs(user_systemd_dir, exist_ok=True)
+    
+    service_file_path = os.path.join(user_systemd_dir, "rfidisk.service")
+    
+    try:
+        with open(service_file_path, 'w') as f:
+            f.write(service_content)
+        
+        print(f"✓ Systemd service file created: {service_file_path}")
+        
+        # Enable lingering for user services to start at boot (without login)
+        print("Enabling user service lingering...")
+        subprocess.run(['loginctl', 'enable-linger', os.getlogin()], check=True)
+        print("✓ User lingering enabled")
+        
+        # Reload systemd user daemon
+        print("Reloading systemd user daemon...")
+        subprocess.run(['systemctl', '--user', 'daemon-reload'], check=True)
+        print("✓ Systemd user daemon reloaded")
+        
+        # Enable the service
+        print("Enabling rfidisk service...")
+        subprocess.run(['systemctl', '--user', 'enable', 'rfidisk.service'], check=True)
+        print("✓ Service enabled")
+        
+        # Start the service
+        print("Starting rfidisk service...")
+        subprocess.run(['systemctl', '--user', 'start', 'rfidisk.service'], check=True)
+        print("✓ Service started")
+        
+        print("\n🎉 RFIDisk service installed and started successfully!")
+        print("\nService commands:")
+        print(f"  systemctl --user status rfidisk.service    # Check status")
+        print(f"  journalctl --user-unit=rfidisk.service -f # View logs")
+        print(f"  systemctl --user stop rfidisk.service      # Stop service")
+        print(f"  systemctl --user restart rfidisk.service  # Restart service")
+        
+        return True
+        
+    except subprocess.CalledProcessError as e:
+        print(f"✗ Error executing systemctl command: {e}")
+        return False
+    except Exception as e:
+        print(f"✗ Error creating systemd service: {e}")
+        return False
+
+def uninstall_systemd_service():
+    """Remove systemd service and disable it"""
+    user_systemd_dir = os.path.expanduser("~/.config/systemd/user")
+    service_file_path = os.path.join(user_systemd_dir, "rfidisk.service")
+    
+    try:
+        # Stop the service if running
+        print("Stopping rfidisk service...")
+        subprocess.run(['systemctl', '--user', 'stop', 'rfidisk.service'], 
+                      check=False, capture_output=True)
+        
+        # Disable the service
+        print("Disabling rfidisk service...")
+        subprocess.run(['systemctl', '--user', 'disable', 'rfidisk.service'], 
+                      check=False, capture_output=True)
+        
+        # Remove service file
+        if os.path.exists(service_file_path):
+            os.remove(service_file_path)
+            print(f"✓ Service file removed: {service_file_path}")
+        else:
+            print("ℹ️ Service file not found (already removed?)")
+        
+        # Reload systemd user daemon
+        print("Reloading systemd user daemon...")
+        subprocess.run(['systemctl', '--user', 'daemon-reload'], check=True)
+        print("✓ Systemd user daemon reloaded")
+        
+        # Reset failed state if any
+        subprocess.run(['systemctl', '--user', 'reset-failed'], check=False)
+        
+        print("\n✓ RFIDisk service uninstalled successfully!")
+        print("\nNote: The service will no longer start automatically.")
+        
+        return True
+        
+    except subprocess.CalledProcessError as e:
+        print(f"✗ Error executing systemctl command: {e}")
+        return False
+    except Exception as e:
+        print(f"✗ Error uninstalling systemd service: {e}")
+        return False
 
 class RFIDLauncher:
     def __init__(self):
@@ -554,7 +667,6 @@ def print_warning():
     BOLD = '\033[1m'
     
     warning_message = [
-     
         "",
         "This software can automatically launch applications.",
         "Make sure your configuration only contains",
@@ -569,6 +681,46 @@ def print_warning():
         print(f"{BOLD}{line}{RESET}")
 
 def main():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(
+        description='💾 RFIDisk - Physical App Launcher for Linux PC\n\n'
+                   'Turns RFID tags into physical shortcuts that launch games, apps, or scripts\n'
+                   'when inserted on a retro-styled "floppy drive" reader.',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='''
+
+CONFIGURATION:
+  Edit rfidisk_config.json to configure RFID tags, serial port,
+  removal delay, and notification settings.
+
+SERVICE MANAGEMENT:
+  systemctl --user status rfidisk.service    # Check service status
+  journalctl --user-unit=rfidisk.service -f # View service logs
+  systemctl --user restart rfidisk.service  # Restart service
+        '''
+    )
+    
+    parser.add_argument('--create-service', action='store_true', 
+                       help='Create and enable systemd service for automatic startup at boot')
+    parser.add_argument('--uninstall-service', action='store_true',
+                       help='Remove and disable systemd service')
+    
+    args = parser.parse_args()
+    
+    # Handle service creation
+    if args.create_service:
+        if create_systemd_service():
+            sys.exit(0)
+        else:
+            sys.exit(1)
+    
+    # Handle service uninstallation
+    if args.uninstall_service:
+        if uninstall_systemd_service():
+            sys.exit(0)
+        else:
+            sys.exit(1)
+    
     # Print warning message first
     print_warning()
         
