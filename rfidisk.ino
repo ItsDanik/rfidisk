@@ -12,7 +12,7 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);
 
 bool tagPresent = false;
 String lastTagUid = "";
-const char version[] PROGMEM = "v0.8";
+const char version[] PROGMEM = "v0.82";
 
 const unsigned char rfidisk_logo[] PROGMEM = {
 0xfc, 0x7f, 0x77, 0xe1, 0xc0, 0x1c, 0x00, 0xe6, 0x70, 0x77, 0x31, 0xc0, 0x1c, 0x00, 0xe6, 0x70, 
@@ -52,7 +52,7 @@ void setup() {
   display.clearDisplay();
   display.drawBitmap(39, 28, rfidisk_logo, 50, 11, SH110X_WHITE);
   display.setTextColor(SH110X_WHITE);
-  display.setCursor(104, 56);
+  display.setCursor(98, 56);
   display.print((const __FlashStringHelper*)version);
   display.display();
   delay(800);
@@ -131,7 +131,7 @@ bool isTagPresent() {
 }
 
 void loop() {
-  
+
   // Process serial commands immediately
   if (Serial.available() > 0) {
     String cmd = Serial.readStringUntil('\n');
