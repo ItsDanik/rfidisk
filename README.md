@@ -46,8 +46,6 @@ This mode of operation closely resembles a cartridge-based game console system, 
 ### Coming Soon (?)
 - Gamescope support
 - Decky Loader plugin for Steam Deck integration  
-- GUI configurator for easy tag management  
-- Easy installation script
   
 ---
 
@@ -138,14 +136,15 @@ RC522 SDA ----- 10  Arduino
 ### Project File Structure
 This project consists of 6 files:  
 ```
-- License             | Default GNU GPL3.0 License
+- License             | Standard GNU GPL3.0 License  
 - README.md           | What you're reading now.  
-- floppy.png          | The icon that is being displayed in the desktop notifications.
-- install.sh          | Automatic installation script. You need to chmod +x it before you run it.
+- floppy.png          | The icon that is being displayed in the desktop notifications.  
+- install.sh          | Automatic installation script. You need to chmod +x it before you run it.  
 - rfidisk.ino         | The arduino firmware. Written in C++. We will compile and upload this to the Arduino.  
 - rfidisk.py          | The host software, running on our host machine. Wtieen in Python. This does the talking with the Arduino.  
-- rfidisk_config.json | This is the configuration file for the Python script. It also stores the RFID Tag database.
-- rfidisk_tags.json   | This is the RFID Tag database. Edit this file to configure RFID Tag behaviour.
+- rfidisk_config.json | This is the configuration file for the Python script. It also stores the RFID Tag database.  
+- rfidisk_tags.json   | This is the RFID Tag database. Edit this file to configure RFID Tag behaviour.  
+- rfidisk-manager.py  | A simple GUI manager that simplifies new tag entry and editing/removal of existing Tags.  
 ```
 
 ---
@@ -275,49 +274,44 @@ To start RFIDisk manually, go to the directory of the project and type:
 
 ```python3 ./rfidisk.py```  
 
-The app should initialize, and on the OLED screen of the device you should be able to see a  
-"Ready/Insert Disk" message. Insert a floppy into the drive. A new entry should automatically  
-be created in rfidisk_config.json. Remove the disk, open the file and edit the last entry:  
+- The app should initialize, and on the OLED screen of the device you should be able to see a "Ready/Insert Disk" message. Insert a floppy into the drive.
+- A window should pop open with a new entry already created and the Tag ID field automatically completed. Remove the disk now and edit the followind fields:  
 
 ```
-"a1b2c3d4": {
-"command": "",  
-"line1": "Example Tag",  
-"line2": "Configure Me",  
-"line3": "Edit rfidisk_tags.json",  
-"line4": "example",  
-"terminate": ""
-}
+Tag ID:              a1b2c3d4
+Launch Command:
+Display Line 1:      new entry
+Display Line 2:      convifugre me
+Display Line 3:      edit rfidisk_tags.json
+Display Line 4:      a1b2c3d4
+Terminate Command:
 ```
 
-The "a1b2c3d4" at the top will be different and is the unique ID of the NFC tag. Don't touch this value.  
-"command": Type here the command you want to execute when this disk is inserted.  
-"line1": This is the first line that will be drawn on the OLED screen. Usually the first two rows should be used for the title of the application.  
-"line2": This is the second line that will be drawn on the OLED screen.  
-"line3": Third line, you can use it for whatever you want, for example year of release.  
-"line4": Fourth line, you can use it for developer or publisher etc.  
+The Tag ID ("a1b2c3d4") at the top will be different and is the unique ID of the NFC tag. Don't touch this value.  
+Launch command: Type here the command you want to execute when this disk is inserted. You can also browse for the executable.  
+Display Line 1-4: These are the four lines of text that will be displayed on the OLED screen when this disk gets inserted.  
+Usually the first two lines are used for the title of the application, Line 3 for release year and Line 4 for Developer/Publisher.  
+Terminate command: Useful when launching Steam games (keep reading).  
+
+> [!NOTE]
+> - "Display Line 1" and "Display Line 2" get truncated at 20 characters.  
+> - "Display Line 3" and "Display Line 4" get truncated at 14 characters (to make room for the icon).
 
 Here is an example of an entry, properly configured and formatted:  
 
 ```
-"1d0dc0070d1080": {
-      "command": "/usr/bin/gzdoom -iwad /home/user/DOOM.WAD",
-      "line1": "DOOM",
-      "line2": "GZDoom Engine",
-      "line3": "1993",
-      "line4": "id Software",
-      "terminate": ""
-    },
+Tag ID:              1d0dc0070d1080
+Launch Command:      /usr/bin/gzdoom -iwad /home/user/DOOM.WAD
+Display Line 1:      DOOM
+Display Line 2:      GZDoom Engine
+Display Line 3:      1993
+Display Line 4:      id Software
+Terminate Command:
 ```
-> [!TIP]
-> It is recommended that can use an editor like code, which constantly updates on the file.
-> That way you don't have to reload every time you insert a new disk, you can leave it open
-> and prepare multiple disks in one go that way. Also the usage of such an editor ensures
-> proper json formatting.
 
-Save the file, and insert the disk. The application should now launch!  
+Click on "Save Changes", quit the manager and insert the disk. The application should now launch!  
 Remove the disk and the application closes.  
-Repeat the configuration proccess for as many disks as you need.
+Repeat the configuration proccess for as many disks as you need.  
 
 ---
 
@@ -396,15 +390,15 @@ This means, that the gameid of Cyberpunk 2077 is 1091500. But also, terminating 
 In the example of Cyberpunk 2077, the proccess name is "GameThread".
 
 After all this work, now we can build a Steam game entry:
+
 ```
-"1d0abf070d1080": {
-      "command": "steam steam://rungameid/1091500",
-      "line1": "Cyberpunk 2077",
-      "line2": "Phantom Liberty",
-      "line3": "2020-2023",
-      "line4": "CDProjectRed",
-      "terminate": "killall GameThread"
-    },
+Tag ID:              1d0dc0070d1080
+Launch Command:      steam steam://rungameid/1091500
+Display Line 1:      Cyberpunk 2077
+Display Line 2:      Phantom Liberty
+Display Line 3:      2020-2023
+Display Line 4:      CDProjectRed
+Terminate Command:   killall GameThread
 ```
 
 ---
@@ -412,6 +406,5 @@ After all this work, now we can build a Steam game entry:
 ### TODO/Ideas List
 - Find a solution for the known issue with Proton (USB Momentarily Disconnects and Arduino reboots)  
 - Explore GameScope support (test game launching and make use of GameScope notification system)  
-- Potentially package it as a DeckyLoader plugin?  
-- Seperate interactive GUI for managing tag entries, called automatically when a new tag is inserted
-- Installation script to automate everything
+- Potentially package it as a DeckyLoader plugin?
+  
