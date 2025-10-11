@@ -1,6 +1,30 @@
-# RFIDisk
-A complete RFID based app launcher for Linux.
 <img width="1794" height="973" alt="3D" src="https://github.com/user-attachments/assets/7a0db381-44d1-4340-8a02-d670594e7833" />
+
+# 💾 RFIDisk — Physical App Launcher for Linux PC
+
+**RFIDisk** turns RFID tags into *physical shortcuts* that launch games, apps, or scripts when inserted on a retro-styled "floppy drive" reader.  
+Think of it as a cross between an RFID scanner and a USB floppy disk drive.
+
+---
+
+### ✨ Features
+- 🎮 **Launch anything** — games, programs, or scripts linked to individual RFID tags.  
+- 💾 **Retro aesthetic** — designed to look like a floppy disk drive.  
+- 🔐 **Configurable** — fully customizable tag-to-command mapping via JSON.  
+- 🪟 **Host-side integration** — Python daemon handles app launching, logging, and notifications.  
+- 🧱 **3D-printable shell** — includes MakerWorld project and hardware build guide.  
+
+---
+
+### 🛠️ How It Works
+- Each RFID tag inside the disk corresponds to a command (e.g. `steam steam://rungameid/12345`).
+1. When a disk is inserted on the reader, the Arduino firmware identifies it and notifies the host.
+2. The Python service looks up the tag’s command in `rfidisk_config.json` and launches it.
+3. A notification is shown on the host machine.
+4. The OLED display updates in real time.
+5. When the disk is removed from the reader, the application is terminated.
+
+---
 
 <img src="https://github.com/user-attachments/assets/9dd670ca-56e6-4e30-9336-dc6832b9829a" width="240">
 
@@ -10,13 +34,15 @@ A complete RFID based app launcher for Linux.
 
 <img src="https://github.com/user-attachments/assets/eeecc4b2-6a04-49ed-a520-2e8493fd4019" width="240">
 
-## Project Description:
-An 3D-printed external disk drive, that connects to a host Linux machine via USB, and uses 3D-printed RFID-Enabled 3.5" floppy disks.
-The user inserts disks into the drive, and the host machine launches an application. The application stays open as long as the disk is in the drive.
-When the user removes the disk, the application is terminated. Also, there is an monochrome OLED 128x64 screen on the hardware that provides info
-about the disk that is currently in the drive.
+---
 
-This project includes everything you're going to need, including BOM, schematics (pinout, basically), code for both the microcontroller and the host machine, and even models for 3D printing the harware required.
+### 🧩 Coming Soon
+- Gamescope support
+- Decky Loader plugin for Steam Deck integration  
+- GUI configurator for easy tag management  
+- Custom icons loaded dynamically from the host  
+
+---
 
 ## WARNING!
 > [!CAUTION]
@@ -26,6 +52,8 @@ Do not import other people's configurations, except if you really know what you'
 
 > [!IMPORTANT]
 This project, including this README, are work in progress. There may be bugs, errors, omissions etc.
+
+---
 
 ## What you'll need
 ### Bill of Materials:
@@ -42,6 +70,8 @@ NFC NTAG213 25mm 13.56MHz (as many as you need, one per floppy)
 Soldering iron  
 3D Printer  
 A PC running Linux  
+
+---
 
 ## Hardware Assembly  
 
@@ -89,6 +119,7 @@ RC522 SDA ----- 10  Arduino
 > If you experience weak signal and/or inconsistencies in reading, the metal surface of the disk is at fault.
 > You can try to open carefully the disk and remove the whole disk, and stick the sticker through the hole on the inside.
 
+---
 
 ## Software Installation / Configuration
 
@@ -111,6 +142,7 @@ sudo usermod -a -G dialout $(whoami)
 sudo usermod -a -G uucp $(whoami)
 ```  
 
+---
 
 ### Compiling and Uploading the arduino sketch  
 If using arduino-cli, go into the directory of the project and type:  
@@ -125,6 +157,7 @@ arduino-cli upload rfidisk.ino -p /dev/ttyACM0 -b arduino:avr:uno
 
 If everything was succesful, the OLED Display should now show a logo (RFIDisk).  
 
+---
 
 ### Configuring rfidisk
 Open the rfidisk_config.json file (use any editor you like), and tweak the topmost setting:  
@@ -136,6 +169,8 @@ To set up a udev rule with a static custom path like /dev/rfidisk, keep reading.
 
 You can also change any of the other settings in rfidisk_config.json, according to your preferences.  
 Everything now should be set to go.  
+
+---
 
 ## Using RFIDisk
 
@@ -186,6 +221,8 @@ Here is an example of an entry, properly configured and formatted:
 Save the file, and insert the disk. The application should now launch! Remove the disk and the application closes.  
 Repeat the configuration proccess for as many disks as you need.
 
+---
+
 ## Post-Installation optimizations
 
 ### Create udev rules for static device path
@@ -226,6 +263,8 @@ If successful, remember to update the rfidisk_config.json file:
 "serial_port": "/dev/rfidisk",
 ```
 
+---
+
 ### Make the python script executable
 We can make the script directly executable.  
 To do this, go to the project directory and type: 
@@ -236,6 +275,8 @@ Now, you can directly execute the script without having to specify "python":
 ```
 ./rfidisk.py
 ```
+
+---
 
 ### Make the script run automatically upon login
 We can make the script run silently in the background eveytime we login, by  
@@ -280,6 +321,8 @@ systemctl --user status rfidisk.service
 
 Reboot to test!  
 
+---
+
 ## Bugs / Quirks:
 ### Proton Quirks
 When an application is launched via proton (ie most Steam games), for some reason the USB ports  
@@ -289,6 +332,8 @@ To combat this, as a workaround, an overly-complex connection recovery routine h
 to avoid double launching of an app, and double notifications etc. It seems to be working ok, but  
 it is a hack. If anyone finds a better way to handle this, like prevent the USB device from disconnecting  
 when Proton initializes, please let me know.  
+
+---
 
 ### Steam Games
 To launch steam games, in the "command" field of the entry, use:  
@@ -318,6 +363,8 @@ After all this work, now we can build a Steam game entry:
       "terminate": "killall GameThread"
     },
 ```
+
+---
 
 ### TODO/Ideas List
 - Find a solution for the known issue with Proton (USB Momentarily Disconnects and Arduino reboots)  
