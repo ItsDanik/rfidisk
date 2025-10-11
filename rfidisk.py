@@ -14,7 +14,7 @@ CONFIG_FILE = "rfidisk_config.json"
 TAGS_FILE = "rfidisk_tags.json"
 
 # Version number
-VERSION = "0.85"
+VERSION = "0.90"
 
 # Default configuration
 default_config = {
@@ -22,7 +22,8 @@ default_config = {
         "serial_port": "/dev/ACM0",
         "removal_delay": 0.0,
         "desktop_notifications": True,
-        "notification_timeout": 8000
+        "notification_timeout": 8000,
+        "auto_launch_manager": True  # New setting for auto-launching tag manager
     }
 }
 
@@ -115,6 +116,23 @@ class RFIDLauncher:
         # State tracking in RAM only
         self.app_was_launched_by_us = False
         self.recovery_mode = False  # Prevent notifications during recovery
+
+    def launch_tag_manager(self, tag_id):
+        """Launch the tag manager GUI for configuring a new tag"""
+        if not self.config["settings"].get("auto_launch_manager", True):
+            return False
+            
+        manager_script = os.path.join(os.path.dirname(__file__), "rfidisk-manager.py")
+        if os.path.exists(manager_script):
+            try:
+                subprocess.Popen([sys.executable, manager_script, "--edit", tag_id])
+                print(f"Launched tag manager for tag: {tag_id}")
+                return True
+            except Exception as e:
+                print(f"Failed to launch tag manager: {e}")
+        else:
+            print(f"Tag manager not found at: {manager_script}")
+        return False
 
     def create_or_update_new_entry(self, tag_id):
         """Create or update a new entry for unknown tags"""
@@ -510,15 +528,30 @@ class RFIDLauncher:
                 self.last_unknown_tag = tag_id
                 new_tag_id = self.create_or_update_new_entry(tag_id)
                 
-                # Show new entry screen with icon_type=0 (no icon)
+                # Show new entry screen
                 self.send_display_command(
-                    "new entry",
-                    "configure me",
-                    "edit rfidisk_tags.json",
+                    "new tag detected",
+                    "launching config",
+                    "please wait...",
                     new_tag_id,
                     "0"
                 )
-                self.send_desktop_notification("New Tag", f"Tag {new_tag_id} added")
+                
+                # Auto-launch tag manager for configuration
+                if self.launch_tag_manager(new_tag_id):
+                    self.send_desktop_notification("New Tag", f"Configuring tag {new_tag_id}")
+                    print(f"Auto-launched tag manager for new tag: {new_tag_id}")
+                else:
+                    # Fallback if manager can't be launched
+                    self.send_display_command(
+                        "new entry",
+                        "configure me",
+                        "edit rfidisk_tags.json",
+                        new_tag_id,
+                        "0"
+                    )
+                    self.send_desktop_notification("New Tag", f"Tag {new_tag_id} added - configure manually")
+                
                 print(f"New tag: {tag_id}")
                 
         elif data.startswith("OF:"):
