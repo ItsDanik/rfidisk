@@ -185,11 +185,23 @@ Determines the amount of time (in ms) that the notification will be displayed fo
 
 ---
 
+### Make the python script executable
+We can make the script directly executable.  
+To do this, go to the project directory and type: 
+
+```
+chmod +x rfidisk.py
+```
+
+Now, you can directly execute the script.
+
+---
+
 ## Using RFIDisk
 
 To start RFIDisk go to the directory of the project and type:  
 
-```python3 rfidisk.py```  
+```./rfidisk.py```  
 
 The app should initialize, and on the OLED screen of the device you should be able to see a  
 "Ready/Insert Disk" message. Insert a floppy into the drive. A new entry should automatically  
@@ -279,61 +291,16 @@ If successful, remember to update the rfidisk_config.json file:
 
 ---
 
-### Make the python script executable
-We can make the script directly executable.  
-To do this, go to the project directory and type: 
-```
-chmod +x rfidisk.py
-```
-Now, you can directly execute the script without having to specify "python":  
-```
-./rfidisk.py
-```
+### Make the script run automatically upon login  
+There are now command line options to automatically create and uninstall  
+a systemd service that executes the script every time you login. Run:  
 
----
+```./rfidisk.py --create-service```  
 
-### Make the script run automatically upon login
-We can make the script run silently in the background eveytime we login, by  
-creating a systemd user service:  
+Now the script runs silently and automatically everytime you login.  
+To revert this, run:  
 
-```
-mkdir -p ~/.config/systemd/user
-nano ~/.config/systemd/user/rfidisk.service
-```
-
-Paste this into the empty file:  
-
-```
-[Unit]
-Description=RFIDisk Arduino Monitor Script
-After=default.target
-
-[Service]
-Type=simple
-ExecStart=/usr/bin/python3 /home/path/to/rfidisk/rfidisk.py
-WorkingDirectory=/home/path/to/rfidisk
-Restart=on-failure
-ExecStartPre=/bin/sleep 1
-
-[Install]
-WantedBy=default.target
-```
-And replace the /home/path/to/rfidisk/ with your actual path where rfidisk resides.  
-Be sure to replace both instances (ExecStart and WorkingDirectory).  
-Save the file (Ctrl+X, y)  
-
-To apply the changes:  
-```
-systemctl --user daemon-reload
-systemctl --user enable rfidisk.service
-systemctl --user start rfidisk.service
-```
-Check if it's running:
-```
-systemctl --user status rfidisk.service
-```  
-
-Reboot to test!  
+```./rfidisk.py --uninstall-service```
 
 ---
 
