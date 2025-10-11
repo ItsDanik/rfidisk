@@ -12,14 +12,15 @@ import signal
 CONFIG_FILE = "rfidisk_config.json"
 
 # Version number
-VERSION = "0.7"
+VERSION = "0.8"
 
 # Default configuration
 default_config = {
     "settings": {
         "serial_port": "/dev/rfidisk",
         "removal_delay": 0.0,
-        "desktop_notifications": True
+        "desktop_notifications": True,
+        "notification_timeout": 8000
     },
     "rfid_tags": {
         "a1b2c3d4": {
@@ -289,6 +290,9 @@ class RFIDLauncher:
             result = subprocess.run(['which', 'notify-send'], capture_output=True)
             if result.returncode != 0:
                 return False
+            
+            # Get notification timeout from config, default to 3000ms
+            notification_timeout = str(self.config["settings"].get("notification_timeout", 3000))
                 
             # Send the notification
             subprocess.run([
@@ -296,7 +300,7 @@ class RFIDLauncher:
                 '-i', icon_path,
                 title,
                 message,
-                '-t', '3000'
+                '-t', notification_timeout
             ])
             return True
             
