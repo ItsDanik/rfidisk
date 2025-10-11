@@ -140,7 +140,8 @@ This project consists of 6 files:
 ```
 - License             | Default GNU GPL3.0 License
 - README.md           | What you're reading now.  
-- floppy.png          | The icon that is being displayed in the desktop notifications.  
+- floppy.png          | The icon that is being displayed in the desktop notifications.
+- install.sh          | Automatic installation script. You need to chmod +x it before you run it.
 - rfidisk.ino         | The arduino firmware. Written in C++. We will compile and upload this to the Arduino.  
 - rfidisk.py          | The host software, running on our host machine. Wtieen in Python. This does the talking with the Arduino.  
 - rfidisk_config.json | This is the configuration file for the Python script. It also stores the RFID Tag database.
