@@ -143,8 +143,27 @@ This project consists of 6 files:
 - floppy.png          | The icon that is being displayed in the desktop notifications.  
 - rfidisk.ino         | The arduino firmware. Written in C++. We will compile and upload this to the Arduino.  
 - rfidisk.py          | The host software, running on our host machine. Wtieen in Python. This does the talking with the Arduino.  
-- rfidisk_config.json | This is the configuration file for the Python script. It also stores the RFID Tag database.  
+- rfidisk_config.json | This is the configuration file for the Python script. It also stores the RFID Tag database.
+- rfidisk_tags.json   | This is the RFID Tag database. Edit this file to configure RFID Tag behaviour.
 ```
+
+---
+
+## Installation using install script  
+As of version 0.85, you can (hopefully) install everything with just a couple of commands.  
+WARNING! Everything is beta, USE AT YOUR OWN RISK!!!  
+
+```
+chmod +x ./install.sh
+./install.sh
+```
+
+If everything went smoothly and you see "Ready/Insert Disk" on the device's OLED screen, congratulations!  
+Skip to the "Configuring RFIDisk" section. You don't need to manually start the app, it is already running in the background.  
+
+---
+## Manual Installation
+If install scripts fails, or you don't trust it, here are step by step instructions for manual installation of RFIDisk.  
 
 ### Prerequisites
 The python script requires psutil and serial modules. Make sure to install them:  
@@ -182,15 +201,51 @@ If everything was succesful, the OLED Display should now show a logo (RFIDisk) a
 
 ---
 
+### Make the script run automatically upon login  
+
+Let's start by creating a systemd service:  
+
+```nano ~/.config/systemd/user/rfidisk.service```
+
+Paste the contents of the following block in the newly created empty file:  
+
+```
+Unit]
+Description=RFIDisk Arduino Monitor Script
+After=default.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/path/to/rfidisk/rfidisk.py
+WorkingDirectory=/home/path/to/rfidisk
+Restart=on-failure
+ExecStartPre=/bin/sleep 1
+
+[Install]
+WantedBy=default.target
+```
+
+> [!NOTE]
+> Replace "/home/path/to/rfidisk/rfidisk.py" with the actual path of the installation!  
+> Remember to do so for both the ExecStart and WorkingDirectory instances!  
+
+To apply the changes:  
+
+```
+systemctl --user daemon-reload  
+systemctl --user enable rfidisk.service  
+systemctl --user start rfidisk.service  
+```
+
+---
+
 ### Configuring rfidisk
-Open the rfidisk_config.json file (use any editor you like), and tweak the topmost setting:  
+Open the rfidisk_config.json file (use any editor you like)
 
-```"serial_port": "/dev/rfidisk",```  
+```"serial_port": "/dev/ACM0",```  
 
-Replace "dev/rfidisk" with your Arduino's actual path (likely /dev/ttyACM0).  
-To set up a udev rule with a static custom path like /dev/rfidisk, keep reading.  
-
-You can also change any of the other settings in rfidisk_config.json, according to your preferences:  
+This is likely already correct. In case your device has a different path, enter it here.  
+If have have more serial devices and want to set up a udev rule with a static custom path like /dev/rfidisk, to avoid mixups, keep reading.  
 
 ```"removal_delay": 0.0```  
 
@@ -204,24 +259,20 @@ This enabled desktop notifications when a disk is inserted. Set to 'false' if yo
 
 This works only when desktop_notifications is true. Determines the amount of time (in ms) that the notification will be displayed for.  
 
----
-
-### Make the python script executable
-We can make the script directly executable. To do this, go to the project directory and type:  
-
-```
-chmod +x rfidisk.py
-```
-
-Now, you can directly execute the script.
+> [!NOTE]
+> After changing options in the rfidisk_config.json file, restart the service:
+> ```
+> systemctl --user restart rfidisk.service
+> ```  
 
 ---
 
 ## Using RFIDisk
 
-To start RFIDisk go to the directory of the project and type:  
+RFIDisk should start automatically upon login if you installed it using the script.  
+To start RFIDisk manually, go to the directory of the project and type:  
 
-```./rfidisk.py```  
+```python3 ./rfidisk.py```  
 
 The app should initialize, and on the OLED screen of the device you should be able to see a  
 "Ready/Insert Disk" message. Insert a floppy into the drive. A new entry should automatically  
@@ -230,10 +281,10 @@ be created in rfidisk_config.json. Remove the disk, open the file and edit the l
 ```
 "a1b2c3d4": {
 "command": "",  
-"line1": "new entry",  
-"line2": "configure me",  
-"line3": "edit rfidisk_config.json",  
-"line4": "a1b2c3d4",  
+"line1": "Example Tag",  
+"line2": "Configure Me",  
+"line3": "Edit rfidisk_tags.json",  
+"line4": "example",  
 "terminate": ""
 }
 ```
@@ -272,6 +323,8 @@ Repeat the configuration proccess for as many disks as you need.
 ## Post-Installation optimizations
 
 ### Create udev rules for static device path
+If you have more than one serial devices, they might get mixed up if you rely on /dev/ttyACM0 path.  
+We need to create a unique device path for the arduino.  
 We'll create two udev rules, let's start with one that ensures USB serial ownership:  
 ```
 sudo nano /etc/udev/rules.d/90-tty-acm.rules  
@@ -309,18 +362,6 @@ If successful, remember to update the rfidisk_config.json file:
 "serial_port": "/dev/rfidisk",
 ```
 
----
-
-### Make the script run automatically upon login  
-There are now command line options to automatically create and uninstall  
-a systemd service that executes the script every time you login. Run:  
-
-```./rfidisk.py --create-service```  
-
-Now the script runs silently and automatically everytime you login.  
-To revert this, run:  
-
-```./rfidisk.py --uninstall-service```
 
 ---
 
