@@ -11,145 +11,96 @@ import signal
 import argparse
 
 CONFIG_FILE = "rfidisk_config.json"
+TAGS_FILE = "rfidisk_tags.json"
 
 # Version number
-VERSION = "0.8"
+VERSION = "0.85"
 
 # Default configuration
 default_config = {
     "settings": {
-        "serial_port": "/dev/rfidisk",
+        "serial_port": "/dev/ACM0",
         "removal_delay": 0.0,
         "desktop_notifications": True,
         "notification_timeout": 8000
-    },
-    "rfid_tags": {
-        "a1b2c3d4": {
-            "command": "Placeholder",
-            "line1": "Example",
-            "line2": "Delete this entry",
-            "line3": "after you have made",
-            "line4": "your own ones.",
-            "terminate": "(or don't :))"
-        }
     }
 }
 
-def create_systemd_service():
-    """Create a systemd service file for automatic startup and enable it"""
-    script_path = os.path.abspath(__file__)
-    script_dir = os.path.dirname(script_path)
-    python_path = sys.executable
-    
-    service_content = f"""[Unit]
-Description=RFIDisk Arduino Monitor Script
-After=default.target
+# Default tags with example entry
+default_tags = {
+    "example": {
+        "command": "",
+        "line1": "Example Tag",
+        "line2": "Configure me",
+        "line3": "Edit rfidisk_tags.json",
+        "line4": "example",
+        "terminate": ""
+    }
+}
 
-[Service]
-Type=simple
-ExecStart={python_path} {script_path}
-WorkingDirectory={script_dir}
-Restart=on-failure
-ExecStartPre=/bin/sleep 1
+def load_config():
+    """Load configuration from separate files"""
+    config = default_config.copy()
+    tags = default_tags.copy()
+    
+    # Load settings
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                user_config = json.load(f)
+                # Merge settings while preserving structure
+                if "settings" in user_config:
+                    config["settings"].update(user_config["settings"])
+            print(f"Loaded config from {CONFIG_FILE}")
+        except Exception as e:
+            print(f"Error loading config: {e}")
+    else:
+        # Create default config file
+        save_config(config)
+        print(f"Created default config file: {CONFIG_FILE}")
+    
+    # Load tags
+    if os.path.exists(TAGS_FILE):
+        try:
+            with open(TAGS_FILE, 'r') as f:
+                tags = json.load(f)
+                # Ensure all entries have the terminate field
+                for tag_id, tag_config in tags.items():
+                    if "terminate" not in tag_config:
+                        tag_config["terminate"] = ""
+            print(f"Loaded tags from {TAGS_FILE}")
+        except Exception as e:
+            print(f"Error loading tags: {e}")
+    else:
+        # Create default tags file with example entry
+        save_tags(tags)
+        print(f"Created default tags file: {TAGS_FILE}")
+    
+    return config, tags
 
-[Install]
-WantedBy=default.target
-"""
-    
-    # Determine systemd user directory
-    user_systemd_dir = os.path.expanduser("~/.config/systemd/user")
-    os.makedirs(user_systemd_dir, exist_ok=True)
-    
-    service_file_path = os.path.join(user_systemd_dir, "rfidisk.service")
-    
+def save_config(config):
+    """Save configuration to file"""
     try:
-        with open(service_file_path, 'w') as f:
-            f.write(service_content)
-        
-        print(f"✓ Systemd service file created: {service_file_path}")
-        
-        # Enable lingering for user services to start at boot (without login)
-        print("Enabling user service lingering...")
-        subprocess.run(['loginctl', 'enable-linger', os.getlogin()], check=True)
-        print("✓ User lingering enabled")
-        
-        # Reload systemd user daemon
-        print("Reloading systemd user daemon...")
-        subprocess.run(['systemctl', '--user', 'daemon-reload'], check=True)
-        print("✓ Systemd user daemon reloaded")
-        
-        # Enable the service
-        print("Enabling rfidisk service...")
-        subprocess.run(['systemctl', '--user', 'enable', 'rfidisk.service'], check=True)
-        print("✓ Service enabled")
-        
-        # Start the service
-        print("Starting rfidisk service...")
-        subprocess.run(['systemctl', '--user', 'start', 'rfidisk.service'], check=True)
-        print("✓ Service started")
-        
-        print("\n🎉 RFIDisk service installed and started successfully!")
-        print("\nService commands:")
-        print(f"  systemctl --user status rfidisk.service    # Check status")
-        print(f"  journalctl --user-unit=rfidisk.service -f # View logs")
-        print(f"  systemctl --user stop rfidisk.service      # Stop service")
-        print(f"  systemctl --user restart rfidisk.service  # Restart service")
-        
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(config, f, indent=2)
         return True
-        
-    except subprocess.CalledProcessError as e:
-        print(f"✗ Error executing systemctl command: {e}")
-        return False
     except Exception as e:
-        print(f"✗ Error creating systemd service: {e}")
+        print(f"Error saving config: {e}")
         return False
 
-def uninstall_systemd_service():
-    """Remove systemd service and disable it"""
-    user_systemd_dir = os.path.expanduser("~/.config/systemd/user")
-    service_file_path = os.path.join(user_systemd_dir, "rfidisk.service")
-    
+def save_tags(tags):
+    """Save tags to separate file"""
     try:
-        # Stop the service if running
-        print("Stopping rfidisk service...")
-        subprocess.run(['systemctl', '--user', 'stop', 'rfidisk.service'], 
-                      check=False, capture_output=True)
-        
-        # Disable the service
-        print("Disabling rfidisk service...")
-        subprocess.run(['systemctl', '--user', 'disable', 'rfidisk.service'], 
-                      check=False, capture_output=True)
-        
-        # Remove service file
-        if os.path.exists(service_file_path):
-            os.remove(service_file_path)
-            print(f"✓ Service file removed: {service_file_path}")
-        else:
-            print("ℹ️ Service file not found (already removed?)")
-        
-        # Reload systemd user daemon
-        print("Reloading systemd user daemon...")
-        subprocess.run(['systemctl', '--user', 'daemon-reload'], check=True)
-        print("✓ Systemd user daemon reloaded")
-        
-        # Reset failed state if any
-        subprocess.run(['systemctl', '--user', 'reset-failed'], check=False)
-        
-        print("\n✓ RFIDisk service uninstalled successfully!")
-        print("\nNote: The service will no longer start automatically.")
-        
+        with open(TAGS_FILE, 'w') as f:
+            json.dump(tags, f, indent=2)
         return True
-        
-    except subprocess.CalledProcessError as e:
-        print(f"✗ Error executing systemctl command: {e}")
-        return False
     except Exception as e:
-        print(f"✗ Error uninstalling systemd service: {e}")
+        print(f"Error saving tags: {e}")
         return False
 
 class RFIDLauncher:
     def __init__(self):
-        self.config = self.load_config()
+        self.config, self.tags = load_config()
         self.serial_conn = None
         self.active_tag = None
         self.active_process = None
@@ -165,37 +116,12 @@ class RFIDLauncher:
         self.app_was_launched_by_us = False
         self.recovery_mode = False  # Prevent notifications during recovery
 
-    def load_config(self):
-        if os.path.exists(CONFIG_FILE):
-            try:
-                with open(CONFIG_FILE, 'r') as f:
-                    config = json.load(f)
-                    # Ensure all entries have the terminate field
-                    for tag_id, tag_config in config.get("rfid_tags", {}).items():
-                        if "terminate" not in tag_config:
-                            tag_config["terminate"] = ""
-                    return config
-            except Exception as e:
-                print(f"Error loading config: {e}")
-        return default_config.copy()
-
-    def save_config(self):
-        """Save current config to file"""
-        try:
-            with open(CONFIG_FILE, 'w') as f:
-                json.dump(self.config, f, indent=2)
-            print(f"Config saved")
-            return True
-        except Exception as e:
-            print(f"Error saving config: {e}")
-            return False
-
     def create_or_update_new_entry(self, tag_id):
         """Create or update a new entry for unknown tags"""
         new_entry_id = None
         
         # Check if there's already a "new entry"
-        for existing_id, entry in self.config["rfid_tags"].items():
+        for existing_id, entry in self.tags.items():
             if entry.get("line1") == "new entry":
                 new_entry_id = existing_id
                 break
@@ -203,28 +129,28 @@ class RFIDLauncher:
         if new_entry_id:
             # Update existing new entry with new tag ID
             if new_entry_id != tag_id:
-                self.config["rfid_tags"][tag_id] = self.config["rfid_tags"][new_entry_id]
-                del self.config["rfid_tags"][new_entry_id]
+                self.tags[tag_id] = self.tags[new_entry_id]
+                del self.tags[new_entry_id]
                 print(f"Updated new entry: {tag_id}")
         else:
             # Create new entry with terminate field
-            self.config["rfid_tags"][tag_id] = {
+            self.tags[tag_id] = {
                 "command": "",
                 "line1": "new entry",
                 "line2": "configure me",
-                "line3": "edit rfidisk_config.json",
+                "line3": "edit rfidisk_tags.json",
                 "line4": tag_id,
                 "terminate": ""
             }
             print(f"New entry: {tag_id}")
         
-        # Save the updated config
-        self.save_config()
+        # Save the updated tags
+        self.save_tags()
         return tag_id
 
     def connect_serial(self):
         """Connect to serial port with state recovery"""
-        port = self.config["settings"].get("serial_port", default_config["settings"]["serial_port"])
+        port = self.config["settings"].get("serial_port", "/dev/rfidisk")
         try:
             if self.serial_conn and self.serial_conn.is_open:
                 self.serial_conn.close()
@@ -282,10 +208,10 @@ class RFIDLauncher:
             tag_id = self.active_tag
             print(f"Recovering active tag: {tag_id} (app was launched by us)")
             
-            # Reload config to get any changes
-            self.config = self.load_config()
+            # Reload config and tags to get any changes
+            self.config, self.tags = load_config()
             
-            tag_config = self.config["rfid_tags"].get(tag_id)
+            tag_config = self.tags.get(tag_id)
             if tag_config:
                 # Determine icon type based on command
                 icon_type = self.get_icon_type(tag_config.get("command", ""))
@@ -303,7 +229,7 @@ class RFIDLauncher:
                 self.send_display_command(
                     "State Error",
                     "Tag config missing",
-                    "Check rfidisk_config.json",
+                    "Check rfidisk_tags.json",
                     tag_id,
                     "0"
                 )
@@ -518,7 +444,7 @@ class RFIDLauncher:
             return
             
         # Get the tag config to check for custom terminate command
-        tag_config = self.config["rfid_tags"].get(self.active_tag, {})
+        tag_config = self.tags.get(self.active_tag, {})
         self.terminate_application(tag_config)
         
         # Reset launch tracking
@@ -542,10 +468,10 @@ class RFIDLauncher:
                 print(f"Tag {tag_id} already active with app launched by us, ignoring")
                 return
                 
-            # Reload config to get any changes
-            self.config = self.load_config()
+            # Reload config and tags to get any changes
+            self.config, self.tags = load_config()
             
-            tag_config = self.config["rfid_tags"].get(tag_id)
+            tag_config = self.tags.get(tag_id)
             if tag_config:
                 # Only close current app if it's a different tag
                 if self.active_process and self.active_tag != tag_id:
@@ -588,7 +514,7 @@ class RFIDLauncher:
                 self.send_display_command(
                     "new entry",
                     "configure me",
-                    "edit rfidisk_config.json",
+                    "edit rfidisk_tags.json",
                     new_tag_id,
                     "0"
                 )
@@ -629,6 +555,10 @@ class RFIDLauncher:
             print(f"Unexpected serial error: {e}")
             
         return None
+
+    def save_tags(self):
+        """Save tags to file"""
+        return save_tags(self.tags)
 
     def run(self):
         print(f"Starting RFIDisk v.{VERSION}...")
@@ -681,45 +611,29 @@ def print_warning():
         print(f"{BOLD}{line}{RESET}")
 
 def main():
-    # Parse command line arguments
+    # Parse command line arguments - only help remains
     parser = argparse.ArgumentParser(
         description='💾 RFIDisk - Physical App Launcher for Linux PC\n\n'
-                   'Turns RFID tags into physical shortcuts that launch games, apps, or scripts\n'
-                   'when inserted on a retro-styled "floppy drive" reader.',
+                   'Reads RFID tags through a hardware rfidisk USB device\n'
+                   'and launches/terminates games, apps, or scripts.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
 
 CONFIGURATION:
-  Edit rfidisk_config.json to configure RFID tags, serial port,
-  removal delay, and notification settings.
+  Edit rfidisk_config.json for settings (serial port, delays, notifications)
+  Edit rfidisk_tags.json for RFID tag configurations
 
 SERVICE MANAGEMENT:
   systemctl --user status rfidisk.service    # Check service status
   journalctl --user-unit=rfidisk.service -f # View service logs
   systemctl --user restart rfidisk.service  # Restart service
+
+INSTALLATION:
+  Use the install.sh script for service installation and management
         '''
     )
     
-    parser.add_argument('--create-service', action='store_true', 
-                       help='Create and enable systemd service for automatic startup at boot')
-    parser.add_argument('--uninstall-service', action='store_true',
-                       help='Remove and disable systemd service')
-    
     args = parser.parse_args()
-    
-    # Handle service creation
-    if args.create_service:
-        if create_systemd_service():
-            sys.exit(0)
-        else:
-            sys.exit(1)
-    
-    # Handle service uninstallation
-    if args.uninstall_service:
-        if uninstall_systemd_service():
-            sys.exit(0)
-        else:
-            sys.exit(1)
     
     # Print warning message first
     print_warning()
