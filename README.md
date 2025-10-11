@@ -2,19 +2,34 @@
 
 # 💾 RFIDisk — Physical App Launcher for Linux PC
 
-**RFIDisk** turns RFID tags into *physical shortcuts* that launch games,  
-apps, or scripts when inserted on a retro-styled "floppy drive" reader.  
-Think of it as a cross between an RFID scanner and a USB floppy disk drive.
+**RFIDisk** turns RFID tags into *physical shortcuts* that launch games, apps, or scripts when inserted on a retro-styled "floppy drive" reader. Think of it as a cross between an RFID scanner and a USB floppy disk drive.  
 
 ---
 
-### How It Works
+## What it is
+This project is a combination of hardware and software:  
+
+### Hardware
+- An microcontroller device (Arduino), attached to an RFID reader module and an OLED display module, connected to the host machine via USB. It has its own 3D printed case design, resembling an external floppy disk drive.
+- 3D Printed "Floppies" (they're not really floppy), with the RFID tag embedded in the print (invisible). Real floppies can be used instead, if you have an abundance of faulty ones.  
+
+### Software
+- The software is again a combination of two pieces of software:  
+- One running on the arduino (we'll call it firmware).  
+- The other one running on the host machine (Linux PC).  
+- The two applications talk between them via Serial USB.  
+
+---
+
+## How It Works
 - Each RFID tag inside the disk corresponds to a command (e.g. `steam steam://rungameid/12345`).
-1. When a disk is inserted on the reader, the Arduino firmware identifies it and notifies the host.
+1. When a disk is inserted in the drive, the Arduino firmware identifies it and notifies the host.
 2. The Python service looks up the tag’s command in `rfidisk_config.json` and launches it.
 3. A notification is shown on the host machine.
 4. The OLED display updates in real time, showing metadata of the disk (user-configurable).
-5. When the disk is removed from the reader, the application is terminated.
+5. When the disk is removed from the reader, the application is automatically terminated.
+
+This mode of operation closely resembles a cartridge-based game console system, only you don't have to reboot :)
 
 ---
 
@@ -33,14 +48,12 @@ Think of it as a cross between an RFID scanner and a USB floppy disk drive.
 - Decky Loader plugin for Steam Deck integration  
 - GUI configurator for easy tag management  
 - Easy installation script
-- 
+  
 ---
 
 ## WARNING!
 > [!CAUTION]
-Use this **at your own risk!!** This project contains a script that can pretty much execute whatever command the user wants.  
-Do not import other people's configurations, except if you really know what you're doing.  
-**Always** manually check the configuration file for malicious commands!
+Use this **at your own risk!!** This project contains a script that can pretty much execute whatever command the user wants. Do not import other people's configurations, except if you really know what you're doing. **Always** manually check the configuration file for malicious commands!
 
 > [!IMPORTANT]
 This project, including this README, are work in progress. There may be bugs, typos, errors, omissions etc.
@@ -122,12 +135,23 @@ RC522 SDA ----- 10  Arduino
 
 ## Software Installation / Configuration
 
+### Project File Structure
+This project consists of 6 files:  
+```
+- License             | Default GNU GPL3.0 License
+- README.md           | What you're reading now.  
+- floppy.png          | The icon that is being displayed in the desktop notifications.  
+- rfidisk.ino         | The arduino firmware. Written in C++. We will compile and upload this to the Arduino.  
+- rfidisk.py          | The host software, running on our host machine. Wtieen in Python. This does the talking with the Arduino.  
+- rfidisk_config.json | This is the configuration file for the Python script. It also stores the RFID Tag database.  
+```
+
 ### Prerequisites
 The python script requires psutil and serial modules. Make sure to install them:  
 
 ```pip install pyserial psutil```  
 
-Also, you're going to need an Arduino dev environment.  
+Also, you're going to need an Arduino dev environment. In this example we will use code-oss & arduino-cli.  
 The arduino sketch requires MFRC522, Adafruit GFX, and Adafruit SH110X libraries.  
 Make sure to install them. If using arduino-cli:  
 
@@ -170,24 +194,20 @@ You can also change any of the other settings in rfidisk_config.json, according 
 
 ```"removal_delay": 0.0```  
 
-This ensures that a disk is not ejected by mistake. If you reinsert the disk  
-during that time, the removal is not registered, and the app is not terminated.  
+This ensures that a disk is not ejected by mistake. If you reinsert the disk during that time, the removal is not registered, and the app is not terminated.  
 
 ```"desktop_notifications": true```  
 
-This enabled desktop notifications when a disk is inserted.  
-Set to 'false' if you want to disable desktop notifications.   
+This enabled desktop notifications when a disk is inserted. Set to 'false' if you want to disable desktop notifications.   
 
 ```notification_timeout": 8000```  
 
-This works only when desktop_notifications is true.  
-Determines the amount of time (in ms) that the notification will be displayed for.  
+This works only when desktop_notifications is true. Determines the amount of time (in ms) that the notification will be displayed for.  
 
 ---
 
 ### Make the python script executable
-We can make the script directly executable.  
-To do this, go to the project directory and type: 
+We can make the script directly executable. To do this, go to the project directory and type:  
 
 ```
 chmod +x rfidisk.py
@@ -318,15 +338,15 @@ when Proton initializes, please let me know.
 
 ### Steam Games
 To launch steam games, in the "command" field of the entry, use:  
+
 ```steam steam://rungameid/1234567```
-where "1234567" is the gameid of the game you want to play.  
-To find the gameid, just look at the url address of the Store  
-page of the game. For example, Cyberpunk 2077's store page URL is  
+
+where "1234567" is the gameid of the game you want to play. To find the gameid, just look at the url address of the Store page of the game. For example, Cyberpunk 2077's store page URL is  
+
 ```https://store.steampowered.com/app/1091500/Cyberpunk_2077/```  
-This means, that the gameid of Cyberpunk 2077 is 1091500.  
-But also, terminating games that were launched cannot be automated. We have to manually specify a  
-"terminate" command, that's what this field is reserved for in rfid_config.json entries.  
-To determine the command:  
+
+This means, that the gameid of Cyberpunk 2077 is 1091500. But also, terminating games that were launched cannot be automated. We have to manually specify a "terminate" command, that's what this field is reserved for in rfid_config.json entries. To determine the command:  
+
 - Run the game manually
 - Open a proccess monitor (htop, btop etc)
 - Find the name of the process
@@ -351,6 +371,5 @@ After all this work, now we can build a Steam game entry:
 - Find a solution for the known issue with Proton (USB Momentarily Disconnects and Arduino reboots)  
 - Explore GameScope support (test game launching and make use of GameScope notification system)  
 - Potentially package it as a DeckyLoader plugin?  
-- Automate some post-install work (implement a command line option to automatically create a systemd service)  
 - Seperate interactive GUI for managing tag entries, called automatically when a new tag is inserted
 - Installation script to automate everything
