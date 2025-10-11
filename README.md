@@ -55,6 +55,7 @@ This project, including this README, are work in progress. There may be bugs, er
 1x USB Cable (type B to type A)
 16x 4mm self-tapping M2 Screws  
 4x 6mm self-tapping M2 Screws  
+4x Rubber Feet  
 NFC NTAG213 25mm 13.56MHz (as many as you need, one per floppy)
 
 ### Tools:
@@ -96,6 +97,7 @@ RC522 SDA ----- 10  Arduino
 - Screw the two boards on the 3D Printed PCB Support Piece using 8x 4mm screws.  
 - Screw the whole PCB Support to the roof of the case using 4x 4mm screws.  
 - Screw the bottom 3D Printed part to the bottom of the shell using 4x 6mm screws.
+- Stick the four rubber feet to the bottom of the case.
 - Connect the device to the PC, using a USB type-B to type-A cable.
 
 ### RFIDisk Floppies
