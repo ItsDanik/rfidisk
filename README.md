@@ -158,6 +158,15 @@ chmod +x ./install.sh
 ./install.sh
 ```
 
+## Updating RFIDisk
+- Overwrite the project files
+- Run the install script:
+
+```
+chmod +x ./install.sh
+./install.sh
+```
+  
 If everything went smoothly and you see "Ready/Insert Disk" on the device's OLED screen, congratulations!  
 Skip to the "Configuring RFIDisk" section. You don't need to manually start the app, it is already running in the background.  
 
