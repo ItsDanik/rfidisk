@@ -7,16 +7,7 @@ Think of it as a cross between an RFID scanner and a USB floppy disk drive.
 
 ---
 
-### ✨ Features
-- 🎮 **Launch anything** — games, programs, or scripts linked to individual RFID tags.  
-- 💾 **Retro aesthetic** — designed to look like a floppy disk drive.  
-- 🔐 **Configurable** — fully customizable tag-to-command mapping via JSON.  
-- 🪟 **Host-side integration** — Python daemon handles app launching, logging, and notifications.  
-- 🧱 **3D-printable shell** — includes MakerWorld project and hardware build guide.  
-
----
-
-### 🛠️ How It Works
+### How It Works
 - Each RFID tag inside the disk corresponds to a command (e.g. `steam steam://rungameid/12345`).
 1. When a disk is inserted on the reader, the Arduino firmware identifies it and notifies the host.
 2. The Python service looks up the tag’s command in `rfidisk_config.json` and launches it.
@@ -36,7 +27,7 @@ Think of it as a cross between an RFID scanner and a USB floppy disk drive.
 
 ---
 
-### 🧩 Coming Soon
+### Coming Soon (?)
 - Gamescope support
 - Decky Loader plugin for Steam Deck integration  
 - GUI configurator for easy tag management  
