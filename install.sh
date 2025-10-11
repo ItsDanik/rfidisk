@@ -98,6 +98,80 @@ install_python_deps() {
     fi
 }
 
+# Function to install tkinter based on distro
+install_tkinter() {
+    local distro=$1
+    print_status "Installing tkinter for $distro..."
+    
+    case $distro in
+        ubuntu|debian)
+            sudo apt update
+            sudo apt install -y python3-tk
+            ;;
+        fedora|rhel|centos)
+            if command -v dnf &> /dev/null; then
+                sudo dnf install -y python3-tkinter
+            elif command -v yum &> /dev/null; then
+                sudo yum install -y tkinter
+            else
+                print_error "Cannot install tkinter - no package manager found"
+                return 1
+            fi
+            ;;
+        arch|manjaro)
+            sudo pacman -Sy --noconfirm tk
+            ;;
+        *)
+            print_error "Cannot automatically install tkinter for $distro"
+            echo "Please install tkinter manually for your distribution"
+            return 1
+            ;;
+    esac
+    
+    # Verify installation
+    if python3 -c "import tkinter" 2>/dev/null; then
+        print_success "tkinter installed successfully"
+        return 0
+    else
+        print_error "tkinter installation failed"
+        return 1
+    fi
+}
+
+# Function to check for tkinter and install if missing
+check_and_install_tkinter() {
+    print_status "Checking for tkinter (GUI manager dependency)..."
+    if python3 -c "import tkinter" 2>/dev/null; then
+        print_success "tkinter found - GUI manager will be available"
+        return 0
+    else
+        print_warning "tkinter not found - installing automatically..."
+        local distro=$(detect_distro)
+        if install_tkinter "$distro"; then
+            print_success "tkinter installed successfully - GUI manager will be available"
+            return 0
+        else
+            print_warning "tkinter installation failed - GUI manager will not work"
+            echo "You can manually install tkinter later:"
+            case $distro in
+                ubuntu|debian)
+                    echo "  sudo apt install python3-tk"
+                    ;;
+                fedora|rhel|centos)
+                    echo "  sudo dnf install python3-tkinter"
+                    ;;
+                arch|manjaro)
+                    echo "  sudo pacman -S tk"
+                    ;;
+                *)
+                    echo "  Install tkinter for your distribution"
+                    ;;
+            esac
+            return 1
+        fi
+    fi
+}
+
 # Function to check if arduino-cli is available and install if not
 check_arduino_cli() {
     if ! command -v arduino-cli &> /dev/null; then
@@ -149,7 +223,16 @@ get_installed_version() {
         return
     fi
     
-    # Extract Python script path from service file
+    # Try to get version from the service file comments first (new method)
+    local service_version
+    service_version=$(grep -E '^#\s*Version\s*=' "$service_file" | sed -E 's/^#\s*Version\s*=\s*//' | head -1)
+    
+    if [ -n "$service_version" ]; then
+        echo "$service_version"
+        return
+    fi
+    
+    # Fallback: Extract Python script path from service file and get version from script
     local python_script
     python_script=$(grep "ExecStart=" "$service_file" | cut -d'=' -f2- | awk '{print $2}')
     
@@ -251,8 +334,11 @@ install_systemd_service() {
     # Create user systemd directory
     mkdir -p ~/.config/systemd/user
     
-    # Create service file
+    # Create service file with version comment
     cat > ~/.config/systemd/user/rfidisk.service << EOF
+# RFIDisk Service
+# Version=$current_version
+
 [Unit]
 Description=RFIDisk Arduino Monitor Script
 After=default.target
@@ -278,7 +364,7 @@ EOF
     systemctl --user enable rfidisk.service
     systemctl --user start rfidisk.service
     
-    print_success "Systemd service installed and started"
+    print_success "Systemd service installed and started (Version: $current_version)"
 }
 
 # Function to uninstall RFIDisk service
@@ -349,6 +435,7 @@ main_installation() {
     # Check and install dependencies automatically
     check_arduino_cli
     check_python_deps
+    check_and_install_tkinter
     
     # Detect hardware
     detect_arduino
@@ -363,11 +450,16 @@ main_installation() {
     
     print_success "RFIDisk installation completed successfully!"
     echo ""
+    echo "🎉 All features are ready to use!"
+    echo ""
     echo "Next steps:"
     echo "  1. Insert an RFID tag to create a new entry"
-    echo "  2. Edit rfidisk_tags.json to configure your tags"
+    echo "  2. The tag manager will automatically open for new tags"
     echo "  3. Check status: systemctl --user status rfidisk.service"
     echo "  4. View logs: journalctl --user-unit=rfidisk.service -f"
+    echo ""
+    echo "You can manually launch the tag manager anytime with:"
+    echo "  python3 rfidisk-manager.py"
 }
 
 # Main script
@@ -444,6 +536,8 @@ else
     echo "  • Install Arduino libraries (Adafruit SH110X, Adafruit GFX Library, MFRC522)"
     echo "  • Upload firmware to Arduino"
     echo "  • Install systemd service for automatic startup"
+    echo "  • Install Python dependencies (pyserial, psutil)"
+    echo "  • Install tkinter for GUI tag manager"
     echo ""
     echo -n "Continue with installation? [Y/n]: "
     read -r response
