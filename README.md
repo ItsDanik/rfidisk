@@ -2,7 +2,8 @@
 
 # 💾 RFIDisk — Physical App Launcher for Linux PC
 
-**RFIDisk** turns RFID tags into *physical shortcuts* that launch games, apps, or scripts when inserted on a retro-styled "floppy drive" reader.  
+**RFIDisk** turns RFID tags into *physical shortcuts* that launch games,  
+apps, or scripts when inserted on a retro-styled "floppy drive" reader.  
 Think of it as a cross between an RFID scanner and a USB floppy disk drive.
 
 ---
@@ -12,7 +13,7 @@ Think of it as a cross between an RFID scanner and a USB floppy disk drive.
 1. When a disk is inserted on the reader, the Arduino firmware identifies it and notifies the host.
 2. The Python service looks up the tag’s command in `rfidisk_config.json` and launches it.
 3. A notification is shown on the host machine.
-4. The OLED display updates in real time.
+4. The OLED display updates in real time, showing metadata of the disk (user-configurable).
 5. When the disk is removed from the reader, the application is terminated.
 
 ---
@@ -31,8 +32,8 @@ Think of it as a cross between an RFID scanner and a USB floppy disk drive.
 - Gamescope support
 - Decky Loader plugin for Steam Deck integration  
 - GUI configurator for easy tag management  
-- Custom icons loaded dynamically from the host  
-
+- Easy installation script
+- 
 ---
 
 ## WARNING!
@@ -42,7 +43,7 @@ Do not import other people's configurations, except if you really know what you'
 **Always** manually check the configuration file for malicious commands!
 
 > [!IMPORTANT]
-This project, including this README, are work in progress. There may be bugs, errors, omissions etc.
+This project, including this README, are work in progress. There may be bugs, typos, errors, omissions etc.
 
 ---
 
@@ -69,8 +70,11 @@ A PC running Linux
 
 ### Arduino Pinout  
 
-Connect the devices to the arduino as shown below. Note: You will have to cut solder on the RC522 board because of space restrictions, it won't fit the case otherwise. You can use connectors on all other connections (Arduino & OLED module).
+Connect the devices to the arduino as shown below. 
 
+> [!WARNING]  
+> You will have to cut solder on the RC522 board because of space restrictions, it won't fit the case otherwise.
+> You can use connectors on all other connections (Arduino & OLED module).  
 
 > [!CAUTION]  
 > Connecting the RC522 board to 5V **WILL fry it!** Don't ask me how I know :)  
@@ -104,7 +108,9 @@ RC522 SDA ----- 10  Arduino
 
 - Use the corresponding plate on the MakerWorld Project.
 - Plate 4 is for single disk, plate 5 is for printing 4 disks in one go.
-- The printing pauses on layer 7, that's when you go and stick the NFC tags on the designated area. Be careful to center the sticker. The sticker should not touch the walls of the area. Feel free to manually lower the bed using your printer's controls to get a better view/fit your hand.
+- The printing pauses on layer 7, that's when you go and stick the NFC tags on the designated area.
+  Be careful to center the sticker. The sticker should not touch the walls of the area. Feel free
+  to manually lower the bed using your printer's controls to get a better view/fit your hand.
 - When you have placed the sticker(s) press resume. The printer will seal the NFC tags at the next layer.
 
 > [!NOTE]
@@ -148,7 +154,7 @@ arduino-cli upload rfidisk.ino -p /dev/ttyACM0 -b arduino:avr:uno
 > [!WARNING]
 > If your setup has another device path for the arduino, replace /dev/ttyACM0 with yours.  
 
-If everything was succesful, the OLED Display should now show a logo (RFIDisk).  
+If everything was succesful, the OLED Display should now show a logo (RFIDisk) and firmware version.  
 
 ---
 
@@ -160,8 +166,22 @@ Open the rfidisk_config.json file (use any editor you like), and tweak the topmo
 Replace "dev/rfidisk" with your Arduino's actual path (likely /dev/ttyACM0).  
 To set up a udev rule with a static custom path like /dev/rfidisk, keep reading.  
 
-You can also change any of the other settings in rfidisk_config.json, according to your preferences.  
-Everything now should be set to go.  
+You can also change any of the other settings in rfidisk_config.json, according to your preferences:  
+
+```"removal_delay": 0.0```  
+
+This ensures that a disk is not ejected by mistake. If you reinsert the disk  
+during that time, the removal is not registered, and the app is not terminated.  
+
+```"desktop_notifications": true```  
+
+This enabled desktop notifications when a disk is inserted.  
+Set to 'false' if you want to disable desktop notifications.   
+
+```notification_timeout": 8000```  
+
+This works only when desktop_notifications is true.  
+Determines the amount of time (in ms) that the notification will be displayed for.  
 
 ---
 
@@ -171,9 +191,9 @@ To start RFIDisk go to the directory of the project and type:
 
 ```python3 rfidisk.py```  
 
-The app should initialize, and on the OLED screen of the device you should be able to see a "Ready/Insert Disk" message.  
-Insert a floppy into the drive. A new entry should automatically be created in rfidisk_config.json.  
-Remove the disk, open the file and edit the last entry:  
+The app should initialize, and on the OLED screen of the device you should be able to see a  
+"Ready/Insert Disk" message. Insert a floppy into the drive. A new entry should automatically  
+be created in rfidisk_config.json. Remove the disk, open the file and edit the last entry:  
 
 ```
 "a1b2c3d4": {
@@ -211,7 +231,8 @@ Here is an example of an entry, properly configured and formatted:
 > and prepare multiple disks in one go that way. Also the usage of such an editor ensures
 > proper json formatting.
 
-Save the file, and insert the disk. The application should now launch! Remove the disk and the application closes.  
+Save the file, and insert the disk. The application should now launch!  
+Remove the disk and the application closes.  
 Repeat the configuration proccess for as many disks as you need.
 
 ---
@@ -363,5 +384,6 @@ After all this work, now we can build a Steam game entry:
 - Find a solution for the known issue with Proton (USB Momentarily Disconnects and Arduino reboots)  
 - Explore GameScope support (test game launching and make use of GameScope notification system)  
 - Potentially package it as a DeckyLoader plugin?  
-- Migrate icons from the arduino memory to the host PC. This way we can transmit any number of icons
-  to a fixed 32x32 buffer using serial, not worry about Arduino RAM, and also allow for custom icons.
+- Automate some post-install work (implement a command line option to automatically create a systemd service)  
+- Seperate interactive GUI for managing tag entries, called automatically when a new tag is inserted
+- Installation script to automate everything
