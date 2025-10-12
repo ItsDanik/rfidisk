@@ -17,7 +17,8 @@ This project is a combination of hardware and software:
 - The software is again a combination of two pieces of software:  
 - One running on the arduino (we'll call it firmware).  
 - The other one running on the host machine (Linux PC).  
-- The two applications talk between them via Serial USB.  
+- The two applications talk between them via Serial USB.
+- rfidisk-manager.py is a basic GUI for managing Tag entris.  
 
 ---
 
@@ -167,8 +168,14 @@ chmod +x ./install.sh
 ./install.sh
 ```
   
-If everything went smoothly and you see "Ready/Insert Disk" on the device's OLED screen, congratulations!  
-Skip to the "Configuring RFIDisk" section. You don't need to manually start the app, it is already running in the background.  
+Log out and back in, or reboot. If everything went smoothly and you see "Ready/Insert Disk" on the device's OLED screen, congratulations!  
+
+> [!NOTE]
+> There is a 10 second delay in launching the app during boot. This is on purpose to ensure serial bus has settled and environment is set.  
+> However, on some setups, there may be some instability (a couple of resets of the arduino) as the system enumerates the buses during boot.
+> Give it some seconds and try again once the OLED screen consistently reads "Insert Disk".  
+
+Skip to the "Configuring RFIDisk" section.  
 
 ---
 ## Manual Installation
@@ -210,44 +217,6 @@ If everything was succesful, the OLED Display should now show a logo (RFIDisk) a
 
 ---
 
-### Make the script run automatically upon login  
-
-Let's start by creating a systemd service:  
-
-```nano ~/.config/systemd/user/rfidisk.service```
-
-Paste the contents of the following block in the newly created empty file:  
-
-```
-Unit]
-Description=RFIDisk Arduino Monitor Script
-After=default.target
-
-[Service]
-Type=simple
-ExecStart=/usr/bin/python3 /home/path/to/rfidisk/rfidisk.py
-WorkingDirectory=/home/path/to/rfidisk
-Restart=on-failure
-ExecStartPre=/bin/sleep 1
-
-[Install]
-WantedBy=default.target
-```
-
-> [!NOTE]
-> Replace "/home/path/to/rfidisk/rfidisk.py" with the actual path of the installation!  
-> Remember to do so for both the ExecStart and WorkingDirectory instances!  
-
-To apply the changes:  
-
-```
-systemctl --user daemon-reload  
-systemctl --user enable rfidisk.service  
-systemctl --user start rfidisk.service  
-```
-
----
-
 ### Configuring rfidisk
 Open the rfidisk_config.json file (use any editor you like)
 
@@ -268,11 +237,13 @@ This enabled desktop notifications when a disk is inserted. Set to 'false' if yo
 
 This works only when desktop_notifications is true. Determines the amount of time (in ms) that the notification will be displayed for.  
 
-> [!NOTE]
-> After changing options in the rfidisk_config.json file, restart the service:
-> ```
-> systemctl --user restart rfidisk.service
-> ```  
+```"auto_launch_manager": true```
+
+When this is set to 'true' the rfidisk-manager app automatically gets launched when the user inserts a new (unconfigured) Tag.  
+
+### RFIDisk Manager  
+You can launch this app via your start menu to manage your Tag entries (add, remove, edit).  
+Changes take effect immediately.  
 
 ---
 
