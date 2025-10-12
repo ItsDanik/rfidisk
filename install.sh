@@ -214,27 +214,27 @@ get_python_version() {
     fi
 }
 
-# Function to get installed version from systemd service
+# Function to get installed version from desktop entry
 get_installed_version() {
-    local service_file="$HOME/.config/systemd/user/rfidisk.service"
+    local desktop_file="$HOME/.config/autostart/rfidisk.desktop"
     
-    if [ ! -f "$service_file" ]; then
+    if [ ! -f "$desktop_file" ]; then
         echo ""
         return
     fi
     
-    # Try to get version from the service file comments first (new method)
-    local service_version
-    service_version=$(grep -E '^#\s*Version\s*=' "$service_file" | sed -E 's/^#\s*Version\s*=\s*//' | head -1)
+    # Try to get version from the desktop file comments
+    local desktop_version
+    desktop_version=$(grep -E '^#\s*Version\s*=' "$desktop_file" | sed -E 's/^#\s*Version\s*=\s*//' | head -1)
     
-    if [ -n "$service_version" ]; then
-        echo "$service_version"
+    if [ -n "$desktop_version" ]; then
+        echo "$desktop_version"
         return
     fi
     
-    # Fallback: Extract Python script path from service file and get version from script
+    # Fallback: Extract Python script path from desktop file and get version from script
     local python_script
-    python_script=$(grep "ExecStart=" "$service_file" | cut -d'=' -f2- | awk '{print $2}')
+    python_script=$(grep "Exec=" "$desktop_file" | cut -d'=' -f2- | awk '{print $2}')
     
     if [ -z "$python_script" ] || [ ! -f "$python_script" ]; then
         echo ""
@@ -323,59 +323,63 @@ install_arduino_firmware() {
     print_success "Arduino firmware installed successfully"
 }
 
-# Function to install systemd service
-install_systemd_service() {
+# Function to install desktop autostart entry
+install_desktop_autostart() {
     local script_dir=$(pwd)
     local python_path=$(which python3)
     local current_version=$(get_current_version)
     
-    print_status "Installing systemd service..."
+    print_status "Installing desktop autostart entry..."
+    mkdir -p ~/.config/autostart
     
-    # Create user systemd directory
-    mkdir -p ~/.config/systemd/user
-    
-    # Create service file with version comment
-    cat > ~/.config/systemd/user/rfidisk.service << EOF
-# RFIDisk Service
+    cat > ~/.config/autostart/rfidisk.desktop << EOF
 # Version=$current_version
-
-[Unit]
-Description=RFIDisk Arduino Monitor Script
-After=default.target
-
-[Service]
-Type=simple
-ExecStart=$python_path $script_dir/rfidisk.py
-WorkingDirectory=$script_dir
-Restart=on-failure
-ExecStartPre=/bin/sleep 1
-
-[Install]
-WantedBy=default.target
+[Desktop Entry]
+Type=Application
+Name=RFIDisk
+Comment=Physical App Launcher - Version $current_version
+Exec=sh -c "sleep 10 && cd '$script_dir' && $python_path rfidisk.py"
+Path=$script_dir
+Terminal=false
+X-GNOME-Autostart-enabled=true
 EOF
 
-    # Enable lingering for user services
-    if ! loginctl enable-linger $(whoami); then
-        print_warning "Failed to enable user lingering (may need sudo)"
-    fi
-    
-    # Reload and enable service
-    systemctl --user daemon-reload
-    systemctl --user enable rfidisk.service
-    systemctl --user start rfidisk.service
-    
-    print_success "Systemd service installed and started (Version: $current_version)"
+    print_success "Desktop autostart entry installed (Version: $current_version)"
 }
 
-# Function to uninstall RFIDisk service
+# Function to install RFIDisk Manager application entry
+install_manager_application() {
+    local script_dir=$(pwd)
+    local python_path=$(which python3)
+    
+    print_status "Installing RFIDisk Manager application entry..."
+    mkdir -p ~/.local/share/applications
+    
+    cat > ~/.local/share/applications/rfidisk-manager.desktop << EOF
+[Desktop Entry]
+Type=Application
+Name=RFIDisk Manager
+Comment=Manage RFIDisk tags and settings
+Exec=sh -c "cd '$script_dir' && $python_path rfidisk-manager.py"
+Path=$script_dir
+Terminal=false
+Icon=rfidisk
+Categories=Utility;
+EOF
+
+    print_success "RFIDisk Manager application entry installed"
+}
+
+# Function to uninstall RFIDisk
 uninstall_service() {
     print_status "Starting RFIDisk uninstallation..."
     
-    local service_file="$HOME/.config/systemd/user/rfidisk.service"
+    local desktop_file="$HOME/.config/autostart/rfidisk.desktop"
+    local manager_file="$HOME/.local/share/applications/rfidisk-manager.desktop"
     
-    # Check if service is installed
-    if [ ! -f "$service_file" ]; then
-        print_warning "RFIDisk service not found. Nothing to uninstall."
+    # Check if anything is installed
+    if [ ! -f "$desktop_file" ] && [ ! -f "$manager_file" ]; then
+        print_warning "RFIDisk not found. Nothing to uninstall."
         exit 0
     fi
     
@@ -385,29 +389,29 @@ uninstall_service() {
         print_status "Found installed version: $installed_version"
     fi
     
-    # Stop and disable service
-    print_status "Stopping and disabling service..."
-    if systemctl --user is-active rfidisk.service >/dev/null 2>&1; then
-        systemctl --user stop rfidisk.service
+    # Remove autostart file
+    if [ -f "$desktop_file" ]; then
+        print_status "Removing desktop autostart entry..."
+        rm -f "$desktop_file"
+        print_success "Desktop autostart entry removed"
     fi
     
-    if systemctl --user is-enabled rfidisk.service >/dev/null 2>&1; then
-        systemctl --user disable rfidisk.service
+    # Remove manager application file
+    if [ -f "$manager_file" ]; then
+        print_status "Removing RFIDisk Manager application entry..."
+        rm -f "$manager_file"
+        print_success "RFIDisk Manager application entry removed"
     fi
     
-    # Remove service file
-    print_status "Removing service file..."
-    rm -f "$service_file"
+    # Kill any running RFIDisk processes
+    print_status "Stopping any running RFIDisk processes..."
+    pkill -f "rfidisk.py" || true
     
-    # Reload systemd
-    systemctl --user daemon-reload
-    systemctl --user reset-failed
-    
-    print_success "RFIDisk service uninstalled successfully"
+    print_success "RFIDisk uninstalled successfully"
     print_status "Configuration files have been preserved."
     echo ""
     echo "Note: Your RFID tag configurations in rfidisk_tags.json are still available."
-    echo "If you reinstall later, your settings will be retained."
+    echo "If you reinstall later, your settings will be preserved."
 }
 
 # Function to wait for Arduino to be ready
@@ -419,10 +423,10 @@ wait_for_arduino() {
 # Function to show usage
 show_usage() {
     echo "Usage: $0 [OPTION]"
-    echo "Install or uninstall RFIDisk service"
+    echo "Install or uninstall RFIDisk"
     echo ""
     echo "Options:"
-    echo "  --uninstall    Remove RFIDisk service (preserves configuration files)"
+    echo "  --uninstall    Remove RFIDisk (preserves configuration files)"
     echo "  -h, --help     Show this help message"
     echo ""
     echo "Without options, performs normal installation/update."
@@ -445,20 +449,25 @@ main_installation() {
     install_arduino_firmware
     wait_for_arduino
     
-    # Install systemd service
-    install_systemd_service
+    # Install desktop entries
+    install_desktop_autostart
+    install_manager_application
     
     print_success "RFIDisk installation completed successfully!"
     echo ""
     echo "🎉 All features are ready to use!"
     echo ""
-    echo "Next steps:"
-    echo "  1. Insert an RFID tag to create a new entry"
-    echo "  2. The tag manager will automatically open for new tags"
-    echo "  3. Check status: systemctl --user status rfidisk.service"
-    echo "  4. View logs: journalctl --user-unit=rfidisk.service -f"
+    echo "Desktop entries installed:"
+    echo "  • Autostart entry: ~/.config/autostart/rfidisk.desktop (starts on login with 10s delay)"
+    echo "  • Application entry: ~/.local/share/applications/rfidisk-manager.desktop"
     echo ""
-    echo "You can manually launch the tag manager anytime with:"
+    echo "Next steps:"
+    echo "  1. Logout and login again to start RFIDisk automatically"
+    echo "  2. Insert an RFID tag to create a new entry"
+    echo "  3. The tag manager will automatically open for new tags"
+    echo "  4. You can manually launch the tag manager from your application menu"
+    echo ""
+    echo "The RFIDisk Manager can also be launched manually with:"
     echo "  python3 rfidisk-manager.py"
 }
 
@@ -467,10 +476,9 @@ echo "=========================================="
 echo "           RFIDisk Installer"
 echo "=========================================="
 echo ""
-echo -e "${RED}WARNING! This script has not been thouroughly tested in many setups!${NC} $1"
-echo -e "${RED}Although probably the worst that could possibly happen is just installation failure!${NC} $1"
-echo -e "${RED}always make sure you have backups! USE AT YOUR OWN RISK!!!\n${NC} $1"
-
+echo -e "${RED}WARNING! This script has not been thouroughly tested in many setups!${NC}"
+echo -e "${RED}Although probably the worst that could possibly happen is just installation failure!${NC}"
+echo -e "${RED}always make sure you have backups! USE AT YOUR OWN RISK!!!\n${NC}"
 
 # Parse command line arguments
 case "${1:-}" in
@@ -502,10 +510,10 @@ fi
 
 print_status "Version to install (from local rfidisk.py): $CURRENT_VERSION"
 
-# Check if already installed - get version from installed systemd service + Python script
+# Check if already installed - get version from desktop entry
 INSTALLED_VERSION=$(get_installed_version)
 if [ -n "$INSTALLED_VERSION" ]; then
-    print_status "Currently installed version (from system service): $INSTALLED_VERSION"
+    print_status "Currently installed version (from desktop entry): $INSTALLED_VERSION"
     
     if [ "$INSTALLED_VERSION" == "$CURRENT_VERSION" ]; then
         print_success "Latest version ($CURRENT_VERSION) already installed"
@@ -517,10 +525,8 @@ if [ -n "$INSTALLED_VERSION" ]; then
         read -r response
         if [[ "$response" =~ ^[Yy]$ ]]; then
             print_status "Proceeding with update..."
-            # Stop existing service before update
-            if systemctl --user is-active rfidisk.service >/dev/null 2>&1; then
-                systemctl --user stop rfidisk.service
-            fi
+            # Stop existing processes before update
+            pkill -f "rfidisk.py" || true
             # For update, we reinstall everything including Arduino firmware
             main_installation
         else
@@ -535,7 +541,8 @@ else
     echo "This will:"
     echo "  • Install Arduino libraries (Adafruit SH110X, Adafruit GFX Library, MFRC522)"
     echo "  • Upload firmware to Arduino"
-    echo "  • Install systemd service for automatic startup"
+    echo "  • Install desktop autostart entry (starts automatically on login)"
+    echo "  • Install RFIDisk Manager application entry (accessible from app menu)"
     echo "  • Install Python dependencies (pyserial, psutil)"
     echo "  • Install tkinter for GUI tag manager"
     echo ""
