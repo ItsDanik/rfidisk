@@ -14,7 +14,7 @@ CONFIG_FILE = "rfidisk_config.json"
 TAGS_FILE = "rfidisk_tags.json"
 
 # Version number
-VERSION = "0.90"
+VERSION = "0.91"
 
 # Default configuration
 default_config = {
