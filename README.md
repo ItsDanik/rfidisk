@@ -220,7 +220,7 @@ If everything was succesful, the OLED Display should now show a logo (RFIDisk) a
 ### Configuring rfidisk
 Open the rfidisk_config.json file (use any editor you like)
 
-```"serial_port": "/dev/ACM0",```  
+```"serial_port": "/dev/ttyACM0",```  
 
 This is likely already correct. In case your device has a different path, enter it here.  
 If have have more serial devices and want to set up a udev rule with a static custom path like /dev/rfidisk, to avoid mixups, keep reading.  
