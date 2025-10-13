@@ -296,6 +296,9 @@ Display Line 4:      id Software
 Terminate Command:
 ```
 
+>[!TIP]
+>We can leave the "Terminate Command" blank for all native linux titles. The script is aware of the whole process tree and can sucessfully track and terminate most applications.  
+
 Click on "Save Changes", quit the manager and insert the disk. The application should now launch!  
 Remove the disk and the application closes.  
 Repeat the configuration proccess for as many disks as you need.  
