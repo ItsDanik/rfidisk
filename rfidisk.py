@@ -14,7 +14,7 @@ CONFIG_FILE = "rfidisk_config.json"
 TAGS_FILE = "rfidisk_tags.json"
 
 # Version number
-VERSION = "0.91"
+VERSION = "0.92"
 
 # Default configuration
 default_config = {
@@ -511,8 +511,36 @@ class RFIDLauncher:
                     icon_type
                 )
                 
+                # NEW: Check if command is empty and launch manager if needed
+                command = tag_config.get("command", "").strip()
+                if not command:
+                    # Empty command detected - launch manager for configuration
+                    print(f"Empty command detected for tag {tag_id}, launching manager")
+                    self.send_display_command(
+                        "Please configure",
+                        "Tag (executable",
+                        "not found)",
+                        tag_id,
+                        "0"
+                    )
+                    
+                    if self.launch_tag_manager(tag_id):
+                        self.send_desktop_notification(
+                            "Configuration Required", 
+                            f"Please configure tag {tag_id}\n(executable not found)"
+                        )
+                        print(f"Launched tag manager for unconfigured tag: {tag_id}")
+                    else:
+                        self.send_display_command(
+                            "Config Error",
+                            "Manager not found",
+                            "Edit manually:",
+                            tag_id,
+                            "0"
+                        )
+                
                 # Launch app if command is specified and not already launched by us
-                if (tag_config.get("command") and 
+                elif (command and 
                     not self.app_was_launched_by_us):
                     print(f"Launch: {tag_config['command']}")
                     self.launch_application(
