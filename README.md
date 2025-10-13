@@ -4,6 +4,11 @@
 
 **RFIDisk** turns RFID tags into *physical shortcuts* that launch games, apps, or scripts when inserted on a retro-styled "floppy drive" reader. Think of it as a cross between an RFID scanner and a USB floppy disk drive.  
 
+
+
+https://github.com/user-attachments/assets/157f7cc6-f476-471f-b4b7-5301d1c28b9b
+
+
 ---
 
 ## What it is
