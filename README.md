@@ -157,8 +157,20 @@ This project consists of 6 files:
 
 ---
 
+## Download rfidisk
+From ~/ or any subdirectory, type:  
+```
+git clone https://github.com/ItsDanik/rfidisk.git
+cd rfidisk
+```
+>[!WARNING]
+>It is suggested that you choose your home directory or any subdirectory in that folder!
+>This is to ensure correct file permissions and save a lot of trouble.
+
+---
+
 ## Installation using install script  
-As of version 0.85, you can (hopefully) install everything with just a couple of commands.  
+As of version 0.85 and later, there is an install script that can (hopefully) install everything with minimal user input.  
 WARNING! Everything is beta, USE AT YOUR OWN RISK!!!  
 
 ```
@@ -167,10 +179,9 @@ chmod +x ./install.sh
 ```
 
 ## Updating RFIDisk
-- Overwrite the project files
-- Run the install script:
-
+- From the install directory: 
 ```
+git pull https://github.com/ItsDanik/rfidisk.git
 chmod +x ./install.sh
 ./install.sh
 ```
@@ -183,6 +194,20 @@ Log out and back in, or reboot. If everything went smoothly and you see "Ready/I
 > Give it some seconds and try again once the OLED screen consistently reads "Insert Disk".  
 
 Skip to the "Configuring RFIDisk" section.  
+
+## Uninstalling RFIDisk
+- From the install directory:
+```
+./install.sh --uninstall
+```
+
+The app now will not launch on next login, and the RFID Manager is removed from the start menu. Your settings and Tag Database remains saved.  
+To remove everything (you will lose all your config!):  
+
+```
+cd ..
+rm -rf rfidisk
+```
 
 ---
 ## Manual Installation
