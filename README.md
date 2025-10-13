@@ -224,33 +224,33 @@ If everything was succesful, the OLED Display should now show a logo (RFIDisk) a
 
 ---
 
+## RFIDisk Manager
 ### Configuring rfidisk
-Open the rfidisk_config.json file (use any editor you like)
+Open RFIDisk Manager (via start menu) and click on the Configuration Tab:  
 
-```"serial_port": "/dev/ttyACM0",```  
+```Serial Port: /dev/ttyACM0```  
 
 This is likely already correct. In case your device has a different path, enter it here.  
 If have have more serial devices and want to set up a udev rule with a static custom path like /dev/rfidisk, to avoid mixups, keep reading.  
 
-```"removal_delay": 0.0```  
+```Removal Delay (seconds): 0.0```  
 
 This ensures that a disk is not ejected by mistake. If you reinsert the disk during that time, the removal is not registered, and the app is not terminated.  
+```Desktop Notifications```  
 
-```"desktop_notifications": true```  
+This enabled desktop notifications when a disk is inserted. Disable it if you want to disable desktop notifications.   
 
-This enabled desktop notifications when a disk is inserted. Set to 'false' if you want to disable desktop notifications.   
-
-```notification_timeout": 8000```  
+```Notification Timeout (ms): 8000```  
 
 This works only when desktop_notifications is true. Determines the amount of time (in ms) that the notification will be displayed for.  
 
-```"auto_launch_manager": true```
+```"Auto Launch Manager```
 
-When this is set to 'true' the rfidisk-manager app automatically gets launched when the user inserts a new (unconfigured) Tag.  
+When this is enabled, RFIDisk Manager automatically gets launched when the user inserts a new (or unconfigured) Tag.  
 
-### RFIDisk Manager  
-You can launch this app via your start menu to manage your Tag entries (add, remove, edit).  
-Changes take effect immediately.  
+### Tag Management  
+You can manage your Tag entries in this tab (add, remove, edit).  
+Changes take effect immediately. Keep reading for details.  
 
 ---
 
