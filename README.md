@@ -23,7 +23,7 @@ This project is a combination of hardware and software:
 - One running on the arduino (we'll call it firmware).  
 - The other one running on the host machine (Linux PC).  
 - The two applications talk between them via Serial USB.
-- rfidisk-manager.py is a basic GUI for managing Tag entris.  
+- Configuration and Tag Management is done via RFIDisk Manager (GUI App).
 
 ---
 
