@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Installer Version = "0.92"
+
 # RFIDisk Installation Script
 set -e
 
@@ -363,7 +365,7 @@ Comment=Manage RFIDisk tags and settings
 Exec=sh -c "cd '$script_dir' && $python_path rfidisk-manager.py"
 Path=$script_dir
 Terminal=false
-Icon=rfidisk
+Icon=$script_dir/floppy.png
 Categories=Utility;
 EOF
 
