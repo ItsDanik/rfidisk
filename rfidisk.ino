@@ -12,7 +12,7 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);
 
 bool tagPresent = false;
 String lastTagUid = "";
-const char version[] PROGMEM = "v0.91";
+const char version[] PROGMEM = "v0.92";
 
 const unsigned char rfidisk_logo[] PROGMEM = {
 0xfc, 0x7f, 0x77, 0xe1, 0xc0, 0x1c, 0x00, 0xe6, 0x70, 0x77, 0x31, 0xc0, 0x1c, 0x00, 0xe6, 0x70, 
