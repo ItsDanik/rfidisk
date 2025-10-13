@@ -66,20 +66,22 @@ This project, including this README, are work in progress. There may be bugs, ty
 
 ## What you'll need
 ### Bill of Materials:
-1x Arduino UNO (or compatible)  
-1x 1.3" OLED 128x64 Display (**SH1106 controller**)  
-1x RFID Reader Module (**MFRC522**)  
-11x Jumper Wires ~15cm (Female to Male)  
-1x USB Cable (type B to type A)
-16x 4mm self-tapping M2 Screws  
-4x 6mm self-tapping M2 Screws  
-4x Rubber Feet  
-NFC NTAG213 25mm 13.56MHz (as many as you need, one per floppy)
+
+- 1x Arduino UNO (or compatible)  
+- 1x 1.3" OLED 128x64 Display (**SH1106 controller**)  
+- 1x RFID Reader Module (**MFRC522**)  
+- 11x Jumper Wires ~15cm (Female to Male)  
+- 1x USB Cable (type B to type A)
+- 16x 4mm self-tapping M2 Screws  
+- 4x 6mm self-tapping M2 Screws  
+- 4x Rubber Feet  
+- NFC NTAG213 25mm 13.56MHz (as many as you need, one per floppy)
+
 
 ### Tools:
-Soldering iron  
-3D Printer  
-A PC running Linux  
+- Soldering iron  
+- 3D Printer  
+- A PC running Linux  
 
 ---
 
