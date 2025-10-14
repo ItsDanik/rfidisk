@@ -92,7 +92,7 @@ This project, including this README, are work in progress. There may be bugs, ty
 Connect the devices to the arduino as shown below. 
 
 > [!WARNING]  
-> You will have to cut solder on the RC522 board because of space restrictions, it won't fit the case otherwise.
+> You will have to cut and solder on the RC522 board because of space restrictions, it won't fit the case otherwise.
 > You can use connectors on all other connections (Arduino & OLED module).  
 
 > [!CAUTION]  
