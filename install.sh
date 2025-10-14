@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Installer Version = "0.92"
+# Installer Version = "0.93"
 
 # RFIDisk Installation Script
 set -e
@@ -27,6 +27,67 @@ print_warning() {
 
 print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Function to detect Hyprland and configure window rule
+configure_hyprland_window_rule() {
+    # Check if Hyprland is running
+    if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ] || pgrep -x "hyprland" > /dev/null || [ -n "$XDG_CURRENT_DESKTOP" ] && [[ "$XDG_CURRENT_DESKTOP" == *"Hyprland"* ]]; then
+        print_status "Hyprland detected - checking for window rule configuration..."
+        
+        local hyprland_conf="$HOME/.config/hypr/hyprland.conf"
+        local window_rule='windowrule = float, class:^(Tk)$'
+        
+        # Check if hyprland config exists
+        if [ -f "$hyprland_conf" ]; then
+            # Check if the rule already exists (exact match)
+            if grep -qFx "$window_rule" "$hyprland_conf"; then
+                print_success "Window rule for Tk windows already exists in hyprland.conf"
+                return 0
+            else
+                # Also check for similar rules that might accomplish the same thing
+                if grep -q "windowrule.*float.*class.*Tk" "$hyprland_conf"; then
+                    print_success "Similar window rule for Tk windows already exists in hyprland.conf"
+                    return 0
+                fi
+                
+                echo ""
+                print_warning "For optimal RFIDisk Manager experience on Hyprland,"
+                print_warning "it's recommended to add a window rule to make Tk windows float."
+                echo ""
+                echo -n "Add window rule to ~/.config/hypr/hyprland.conf? [y/N]: "
+                read -r response
+                if [[ "$response" =~ ^[Yy]$ ]]; then
+                    # Backup the config file
+                    cp "$hyprland_conf" "${hyprland_conf}.backup.$(date +%Y%m%d_%H%M%S)"
+                    
+                    # Add the window rule
+                    echo "" >> "$hyprland_conf"
+                    echo "# RFIDisk Manager - float Tk windows" >> "$hyprland_conf"
+                    echo "$window_rule" >> "$hyprland_conf"
+                    
+                    print_success "Window rule added to hyprland.conf"
+                    print_warning "You may need to reload Hyprland for changes to take effect"
+                    echo "You can reload Hyprland with: hyprctl reload"
+                    return 0
+                else
+                    print_status "Window rule not added. You can manually add it later to:"
+                    echo "  ~/.config/hypr/hyprland.conf"
+                    echo "Add this line:"
+                    echo "  $window_rule"
+                    return 0
+                fi
+            fi
+        else
+            print_warning "Hyprland config not found at: $hyprland_conf"
+            print_status "If you're using Hyprland, you may want to add this window rule manually:"
+            echo "  $window_rule"
+            return 0
+        fi
+    else
+        print_status "Hyprland not detected - skipping window rule configuration"
+        return 0
+    fi
 }
 
 # Function to detect Linux distribution
@@ -454,6 +515,9 @@ main_installation() {
     # Install desktop entries
     install_desktop_autostart
     install_manager_application
+    
+    # Configure Hyprland window rule if detected
+    configure_hyprland_window_rule
     
     print_success "RFIDisk installation completed successfully!"
     echo ""
