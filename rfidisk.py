@@ -14,7 +14,7 @@ CONFIG_FILE = "rfidisk_config.json"
 TAGS_FILE = "rfidisk_tags.json"
 
 # Version number
-VERSION = "0.92"
+VERSION = "0.93"
 
 # Default configuration
 default_config = {
@@ -23,7 +23,7 @@ default_config = {
         "removal_delay": 0.0,
         "desktop_notifications": True,
         "notification_timeout": 8000,
-        "auto_launch_manager": True  # New setting for auto-launching tag manager
+        "auto_launch_manager": True
     }
 }
 
@@ -80,7 +80,7 @@ def load_config():
     return config, tags
 
 def save_config(config):
-    """Save configuration to file"""
+    """Save configuration to config file"""
     try:
         with open(CONFIG_FILE, 'w') as f:
             json.dump(config, f, indent=2)
@@ -90,7 +90,7 @@ def save_config(config):
         return False
 
 def save_tags(tags):
-    """Save tags to separate file"""
+    """Save tags to tags file"""
     try:
         with open(TAGS_FILE, 'w') as f:
             json.dump(tags, f, indent=2)
@@ -233,13 +233,13 @@ class RFIDLauncher:
             if tag_config:
                 # Determine icon type based on command
                 icon_type = self.get_icon_type(tag_config.get("command", ""))
-                # Just update the display silently - NO notifications, NO relaunch
+                # Update the display silently, no notifications, no relaunch
                 self.send_display_command(
                     tag_config.get("line1", "App"), 
                     tag_config.get("line2", ""),
                     tag_config.get("line3", ""),
                     tag_config.get("line4", ""),
-                    icon_type  # Restore with appropriate icon
+                    icon_type  
                 )
                 print(f"Silently restored display for {tag_id}")
             else:
@@ -297,7 +297,7 @@ class RFIDLauncher:
         # Store the current display state
         self.last_display_state = (line1, line2, line3, line4)
         
-        # Truncate strings to 20 characters to save RAM
+        # Truncate strings
         line1_trunc = line1[:20]
         line2_trunc = line2[:20]
         line3_trunc = line3[:14]
@@ -331,7 +331,7 @@ class RFIDLauncher:
 
     def send_desktop_notification(self, title, message):
         """Send desktop notification on Linux systems - SUPPRESSED DURING RECOVERY"""
-        # NEVER send notifications during recovery
+        # Never send notifications during recovery
         if self.recovery_mode or self.reconnecting:
             return False
             
@@ -348,8 +348,8 @@ class RFIDLauncher:
             if result.returncode != 0:
                 return False
             
-            # Get notification timeout from config, default to 3000ms
-            notification_timeout = str(self.config["settings"].get("notification_timeout", 3000))
+            # Get notification timeout from config, default to 8000ms
+            notification_timeout = str(self.config["settings"].get("notification_timeout", 8000))
                 
             # Send the notification
             subprocess.run([
@@ -511,7 +511,7 @@ class RFIDLauncher:
                     icon_type
                 )
                 
-                # NEW: Check if command is empty and launch manager if needed
+                # Check if command is empty and launch manager if needed
                 command = tag_config.get("command", "").strip()
                 if not command:
                     # Empty command detected - launch manager for configuration

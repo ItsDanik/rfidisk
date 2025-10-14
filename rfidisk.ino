@@ -12,7 +12,7 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);
 
 bool tagPresent = false;
 String lastTagUid = "";
-const char version[] PROGMEM = "v0.92";
+const char version[] PROGMEM = "v0.93";
 
 const unsigned char rfidisk_logo[] PROGMEM = {
 0xfc, 0x7f, 0x77, 0xe1, 0xc0, 0x1c, 0x00, 0xe6, 0x70, 0x77, 0x31, 0xc0, 0x1c, 0x00, 0xe6, 0x70, 
@@ -48,7 +48,7 @@ void setup() {
     // If display fails, continue anyway
   }
 
-  // Show boot logo
+  // Show boot screen
   display.clearDisplay();
   display.drawBitmap(39, 28, rfidisk_logo, 50, 11, SH110X_WHITE);
   display.setTextColor(SH110X_WHITE);
@@ -86,9 +86,8 @@ void updateDisplay(const char* line1, const char* line2, const char* line3, cons
   display.setCursor(5, 52);
   display.print(line4);
 
-  // Draw icon in bottom right based on iconType - UPDATED for 24x24
+  // Draw icon in bottom right based on iconType
   if (iconType > 0) {
-    // Position: 128-24=104 (right edge), 64-24=40 (bottom edge) - centered better
     switch(iconType) {
       case 1: // Floppy disk icon
         display.drawBitmap(100, 36, floppy_icon, 24, 24, SH110X_WHITE);

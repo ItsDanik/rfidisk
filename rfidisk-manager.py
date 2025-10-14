@@ -8,17 +8,61 @@ import sys
 import socket
 import psutil
 import time
+import threading
+from PIL import Image, ImageTk
+import webbrowser  # Add this import
 
 TAGS_FILE = "rfidisk_tags.json"
 CONFIG_FILE = "rfidisk_config.json"
 LOCK_PORT = 47821  # Arbitrary port for instance checking
-VERSION = "0.92"  # Version number
+VERSION = "0.93"  # Version number
+GITHUB_URL = "https://github.com/ItsDanik/rfidisk"  # Add GitHub URL
+
+# Catppuccin Mocha Color Palette
+COLORS = {
+    # Base colors
+    "base": "#1e1e2e",        # Base
+    "mantle": "#181825",      # Mantle  
+    "crust": "#11111b",       # Crust
+    
+    # Text colors
+    "text": "#cdd6f4",        # Text
+    "subtext1": "#bac2de",    # Subtext 1
+    "subtext0": "#a6adc8",    # Subtext 0
+    
+    # Surface colors
+    "surface0": "#313244",    # Surface 0
+    "surface1": "#45475a",    # Surface 1
+    "surface2": "#585b70",    # Surface 2
+    
+    # Overlay colors
+    "overlay0": "#6c7086",    # Overlay 0
+    "overlay1": "#7f849c",    # Overlay 1
+    "overlay2": "#9399b2",    # Overlay 2
+    
+    # Accent colors
+    "blue": "#89b4fa",        # Blue
+    "lavender": "#b4befe",    # Lavender
+    "sapphire": "#74c7ec",    # Sapphire
+    "sky": "#89dceb",         # Sky
+    "teal": "#94e2d5",        # Teal
+    "green": "#a6e3a1",       # Green
+    "yellow": "#f9e2af",      # Yellow
+    "peach": "#fab387",       # Peach
+    "maroon": "#eba0ac",      # Maroon
+    "red": "#f38ba8",         # Red
+    "mauve": "#cba6f7",       # Mauve
+    "pink": "#f5c2e7",        # Pink
+    "flamingo": "#f2cdcd",    # Flamingo
+    "rosewater": "#f5e0dc"    # Rosewater
+}
 
 class SingletonApp:
     """Prevent multiple instances and handle inter-process communication"""
     def __init__(self):
         self.socket = None
         self.is_primary = False
+        self.listening = False
         
     def acquire_lock(self):
         """Try to bind to a socket - if successful, we're the first instance"""
@@ -27,6 +71,7 @@ class SingletonApp:
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.socket.bind(('localhost', LOCK_PORT))
             self.socket.listen(1)
+            self.socket.setblocking(False)  # Non-blocking socket
             self.is_primary = True
             return True
         except socket.error:
@@ -37,6 +82,7 @@ class SingletonApp:
         """Send a message to the primary instance"""
         try:
             client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.settimeout(1.0)  # 1 second timeout
             client_socket.connect(('localhost', LOCK_PORT))
             if tag_id:
                 client_socket.send(f"EDIT:{tag_id}".encode())
@@ -49,22 +95,31 @@ class SingletonApp:
     
     def check_for_messages(self):
         """Check for incoming messages from other instances (non-blocking)"""
-        if not self.is_primary or not self.socket:
+        if not self.is_primary or not self.socket or not self.listening:
             return None
             
         try:
-            self.socket.settimeout(0.1)  # Non-blocking
             client, addr = self.socket.accept()
+            client.setblocking(True)
             data = client.recv(1024).decode().strip()
             client.close()
             return data
-        except socket.timeout:
-            return None
+        except BlockingIOError:
+            return None  # No connection pending
         except socket.error:
             return None
     
+    def start_listening(self):
+        """Start listening for messages"""
+        self.listening = True
+    
+    def stop_listening(self):
+        """Stop listening for messages"""
+        self.listening = False
+    
     def cleanup(self):
         """Clean up socket resources"""
+        self.stop_listening()
         if self.socket:
             self.socket.close()
             self.socket = None
@@ -73,7 +128,10 @@ class TagManager:
     def __init__(self, root):
         self.root = root
         self.root.title(f"RFIDisk Tag Manager v{VERSION}")
-        self.root.geometry("900x750")  # Increased height for warning message
+        self.root.geometry("740x720")  # Increased height for logo and version
+        
+        # Configure Catppuccin Mocha theme
+        self.configure_theme()
         
         # Singleton management
         self.singleton = SingletonApp()
@@ -84,9 +142,194 @@ class TagManager:
         self.current_tag = None
         self.display_mode = "line1"  # Changed default to "Show Names"
         
+        # Load logo image
+        self.logo_image = None
+        self.load_logo()
+        
         self.create_widgets()
         self.refresh_tag_list()
-        self.setup_ipc_handler()
+        
+        # Start IPC handler after UI is fully set up
+        self.root.after(100, self.setup_ipc_handler())
+    
+    def load_logo(self):
+        """Load the RFIDisk logo image"""
+        logo_path = "./rfidisk.png"
+        if os.path.exists(logo_path):
+            try:
+                image = Image.open(logo_path)
+                # Resize to 400x100 if needed
+                if image.size != (400, 100):
+                    image = image.resize((400, 100), Image.Resampling.LANCZOS)
+                self.logo_image = ImageTk.PhotoImage(image)
+            except Exception as e:
+                print(f"Failed to load logo: {e}")
+                self.logo_image = None
+        else:
+            print(f"Logo file not found: {logo_path}")
+            self.logo_image = None
+    
+    def open_github(self):
+        """Open the GitHub repository in the default web browser"""
+        webbrowser.open(GITHUB_URL)
+    
+    def create_clickable_logo(self, parent):
+        """Create a clickable logo that opens the GitHub repository"""
+        if self.logo_image:
+            # Create a label with the logo image and make it clickable
+            logo_label = tk.Label(parent, image=self.logo_image, bg=COLORS["base"], cursor="hand2")
+            logo_label.pack(pady=(0, 10))
+            
+            # Bind click event to open GitHub
+            logo_label.bind("<Button-1>", lambda e: self.open_github())
+            
+            # Add hover effect to show it's clickable
+            def on_enter(e):
+                logo_label.config(bg=COLORS["surface0"])  # Change background on hover
+            
+            def on_leave(e):
+                logo_label.config(bg=COLORS["base"])  # Restore original background
+            
+            logo_label.bind("<Enter>", on_enter)
+            logo_label.bind("<Leave>", on_leave)
+            
+            return logo_label
+        return None
+
+    def get_installed_version(self):
+        """Check if RFIDisk is installed via autostart entry"""
+        autostart_path = os.path.expanduser("~/.config/autostart/rfidisk.desktop")
+        if os.path.exists(autostart_path):
+            return VERSION
+        else:
+            return "Not Installed"
+    
+    def configure_theme(self):
+        """Configure Catppuccin Mocha color theme with subtle borders"""
+        style = ttk.Style()
+        style.theme_use('clam')  # Use clam theme for maximum customization
+        
+        # Use surface colors for borders instead of the default high-contrast ones
+        subtle_border = COLORS["surface1"]  # Less contrasty border color
+        subtle_border_dark = COLORS["surface0"]  # Even less contrast for some elements
+        
+        # Configure base styles
+        style.configure('.', 
+                       background=COLORS["base"],
+                       foreground=COLORS["text"],
+                       fieldbackground=COLORS["surface0"],
+                       selectbackground=COLORS["blue"],
+                       selectforeground=COLORS["base"],
+                       insertcolor=COLORS["text"],  # Cursor color
+                       troughcolor=COLORS["surface1"],
+                       bordercolor=subtle_border,  # Add border color
+                       darkcolor=subtle_border_dark,  # Dark border shade
+                       lightcolor=subtle_border)  # Light border shade
+        
+        # Configure specific widgets
+        style.configure('TFrame', 
+                       background=COLORS["base"],
+                       relief='flat',
+                       borderwidth=1)  # Subtle border
+        
+        style.configure('TLabel', 
+                       background=COLORS["base"],
+                       foreground=COLORS["text"],
+                       font=('Segoe UI', 9),
+                       borderwidth=0,
+                       relief='flat')
+        
+        style.configure('TButton', 
+                       background=COLORS["surface0"],
+                       foreground=COLORS["text"],
+                       borderwidth=1,  # Reduced border width
+                       focuscolor=COLORS["surface1"],
+                       relief='raised',  # Keep raised for better UX
+                       bordercolor=subtle_border)
+        
+        style.map('TButton',
+                 background=[('active', COLORS["surface1"]),
+                           ('pressed', COLORS["surface2"])],
+                 relief=[('pressed', 'sunken')],
+                 bordercolor=[('active', COLORS["surface2"]),
+                             ('pressed', COLORS["surface1"])])
+        
+        style.configure('TEntry', 
+                       fieldbackground=COLORS["surface0"],
+                       foreground=COLORS["text"],
+                       borderwidth=1,  # Reduced border width
+                       relief='solid',  # Keep solid but with subtle color
+                       bordercolor=subtle_border,
+                       focuscolor=COLORS["blue"])  # Focus color
+        
+        style.configure('TCheckbutton', 
+                       background=COLORS["base"],
+                       foreground=COLORS["text"],
+                       indicatorcolor=COLORS["surface0"],
+                       bordercolor=subtle_border,
+                       indicatorrelief='solid')  # Subtle indicator border
+        
+        style.map('TCheckbutton',
+                 indicatorcolor=[('selected', COLORS["green"]),
+                               ('active', COLORS["surface1"])],
+                 bordercolor=[('active', COLORS["surface2"]),
+                             ('selected', COLORS["green"])])
+        
+        style.configure('TNotebook', 
+                       background=COLORS["base"],
+                       borderwidth=1,  # Add subtle border
+                       bordercolor=subtle_border)
+        
+        style.configure('TNotebook.Tab', 
+                       background=COLORS["surface0"],
+                       foreground=COLORS["subtext0"],
+                       padding=[15, 5],
+                       borderwidth=1,  # Reduced border
+                       relief='raised',  # Keep raised for better UX
+                       bordercolor=subtle_border)
+        
+        style.map('TNotebook.Tab',
+                 background=[('selected', COLORS["blue"]),
+                           ('active', COLORS["surface1"])],
+                 foreground=[('selected', COLORS["base"]),
+                           ('active', COLORS["text"])],
+                 bordercolor=[('selected', COLORS["blue"]),
+                             ('active', COLORS["surface2"])])
+        
+        style.configure('TSpinbox', 
+                       fieldbackground=COLORS["surface0"],
+                       foreground=COLORS["text"],
+                       background=COLORS["surface0"],
+                       arrowcolor=COLORS["text"],
+                       borderwidth=1,
+                       bordercolor=subtle_border,
+                       relief='solid',
+                       focuscolor=COLORS["blue"])
+        
+        # Add a no-border frame style for warning labels
+        style.configure('NoBorder.TFrame', 
+                       background=COLORS["base"],
+                       relief='flat',
+                       borderwidth=0)  # No border
+        
+        # Configure root window
+        self.root.configure(bg=COLORS["base"], highlightbackground=subtle_border)
+        
+        # Configure non-ttk widgets with subtle borders
+        self.root.option_add('*Listbox*Background', COLORS["surface0"])
+        self.root.option_add('*Listbox*Foreground', COLORS["text"])
+        self.root.option_add('*Listbox*selectBackground', COLORS["blue"])
+        self.root.option_add('*Listbox*selectForeground', COLORS["base"])
+        self.root.option_add('*Listbox*font', ('Segoe UI', 9))
+        self.root.option_add('*Listbox*highlightBackground', subtle_border)
+        self.root.option_add('*Listbox*highlightColor', subtle_border)
+        self.root.option_add('*Listbox*borderWidth', 1)
+        
+        # Additional border styling for other elements
+        self.root.option_add('*BorderWidth', 1)
+        self.root.option_add('*highlightThickness', 1)
+        self.root.option_add('*highlightBackground', subtle_border)
+        self.root.option_add('*highlightColor', subtle_border)
     
     def setup_singleton(self):
         """Handle singleton instance logic"""
@@ -117,13 +360,16 @@ class TagManager:
     
     def setup_ipc_handler(self):
         """Set up periodic check for inter-process communication"""
+        self.singleton.start_listening()
+        
         def check_ipc():
-            message = self.singleton.check_for_messages()
-            if message:
-                self.handle_ipc_message(message)
+            if self.singleton.listening:
+                message = self.singleton.check_for_messages()
+                if message:
+                    self.handle_ipc_message(message)
             self.root.after(100, check_ipc)  # Check every 100ms
         
-        self.root.after(100, check_ipc)
+        check_ipc()
     
     def handle_ipc_message(self, message):
         """Handle messages from other instances"""
@@ -187,7 +433,7 @@ class TagManager:
         def flash(count=0):
             if count < 6:  # Flash 3 times
                 if count % 2 == 0:
-                    self.root.configure(background='#ff4444')  # Red flash
+                    self.root.configure(background=COLORS["red"])  # Red flash
                 else:
                     self.root.configure(background=original_color)
                 self.root.after(200, lambda: flash(count + 1))
@@ -197,9 +443,12 @@ class TagManager:
         flash()
     
     def create_warning_label(self, parent):
-        """Create warning label with red bold text"""
-        warning_frame = ttk.Frame(parent)
+        """Create warning label with Catppuccin colors and no borders"""
+        warning_frame = ttk.Frame(parent, style='NoBorder.TFrame')
         warning_frame.pack(fill=tk.X, padx=5, pady=10)
+        
+        # Add clickable logo above warning if available
+        self.create_clickable_logo(warning_frame)
         
         warning_text = [
             "This software can automatically launch applications.",
@@ -211,13 +460,31 @@ class TagManager:
         
         for line in warning_text:
             if line == "WARNING! USE AT YOUR OWN RISK!!!":
-                # Make the last line extra prominent
-                label = tk.Label(warning_frame, text=line, fg='red', font=('TkDefaultFont', 9, 'bold'), justify=tk.CENTER)
+                # Make the last line extra prominent with red color
+                label = tk.Label(warning_frame, text=line, 
+                               fg=COLORS["red"], 
+                               bg=COLORS["base"],
+                               font=('Segoe UI', 9, 'bold'), 
+                               justify=tk.CENTER,
+                               borderwidth=0,  # No border
+                               highlightthickness=0)  # No highlight
             elif line == "":
                 # Empty line for spacing
-                label = tk.Label(warning_frame, text=" ", fg='red', font=('TkDefaultFont', 9, 'bold'), justify=tk.CENTER)
+                label = tk.Label(warning_frame, text=" ", 
+                               fg=COLORS["text"], 
+                               bg=COLORS["base"],
+                               font=('Segoe UI', 9), 
+                               justify=tk.CENTER,
+                               borderwidth=0,  # No border
+                               highlightthickness=0)  # No highlight
             else:
-                label = tk.Label(warning_frame, text=line, fg='red', font=('TkDefaultFont', 9, 'bold'), justify=tk.CENTER)
+                label = tk.Label(warning_frame, text=line, 
+                               fg=COLORS["peach"], 
+                               bg=COLORS["base"],
+                               font=('Segoe UI', 9), 
+                               justify=tk.CENTER,
+                               borderwidth=0,  # No border
+                               highlightthickness=0)  # No highlight
             label.pack(fill=tk.X)
     
     def load_tags(self):
@@ -296,8 +563,78 @@ class TagManager:
         self.settings_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.settings_frame, text="Configuration")
         
+        # Quit tab
+        self.quit_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.quit_frame, text="About/Quit")
+        
         self.setup_tags_tab()
         self.setup_settings_tab()
+        self.setup_quit_tab()
+        
+        # Add version label at bottom right
+        self.create_version_label()
+    
+    def create_version_label(self):
+        """Create version label at bottom right of window"""
+        version_frame = ttk.Frame(self.root)
+        version_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=5, pady=2)
+        
+        installed_version = self.get_installed_version()
+        version_text = f"RFIDisk Version: {installed_version}"
+        
+        version_label = ttk.Label(version_frame, text=version_text, 
+                                font=('Segoe UI', 8), 
+                                foreground=COLORS["subtext0"])
+        version_label.pack(side=tk.RIGHT)
+    
+    def setup_quit_tab(self):
+        """Setup the quit tab with confirmation"""
+        # Main container
+        main_container = ttk.Frame(self.quit_frame)
+        main_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        # Quit message
+        message_frame = ttk.Frame(main_container)
+        message_frame.pack(fill=tk.X, pady=(20, 10))
+        
+        ttk.Label(message_frame, text="RFIDisk",
+                 font=('Segoe UI', 16, 'bold'), foreground=COLORS["teal"]).pack(pady=0)
+
+        ttk.Label(message_frame, text="Project by danik 2025\n",
+                 font=('Segoe UI', 12, 'bold'), foreground=COLORS["maroon"]).pack(pady=0)
+        
+        ttk.Label(message_frame, text="Click the logo banner below to visit the GitHub repository.",
+                 font=('Segoe UI', 11)).pack(pady=0)
+
+        ttk.Label(message_frame, text="Check the README.md for complete documentation.",
+                 font=('Segoe UI', 11)).pack(pady=0)
+
+        ttk.Label(message_frame, text=" ",
+                 font=('Segoe UI', 20), foreground=COLORS["maroon"]).pack(pady=0)
+
+
+                                                                                           
+        ttk.Label(message_frame, text="Exit RFIDisk Manager", 
+                 font=('Segoe UI', 16, 'bold')).pack(pady=5)
+        
+        ttk.Label(message_frame, text="Are you sure you want to quit?",
+                 font=('Segoe UI', 11)).pack(pady=0)
+        
+        ttk.Label(message_frame, text="All unsaved changes will be lost.",
+                 font=('Segoe UI', 9), foreground=COLORS["peach"]).pack(pady=0)
+        
+        # Button frame
+        button_frame = ttk.Frame(main_container)
+        button_frame.pack(pady=10)
+        
+        # Quit button
+        quit_btn = ttk.Button(button_frame, text="Quit Application", 
+                             command=self.quit_app,
+                             style='Accent.TButton')
+        quit_btn.pack(pady=10, ipadx=20, ipady=10)
+        
+        # Add warning label at bottom
+        self.create_warning_label(main_container)
     
     def setup_tags_tab(self):
         """Setup the tag management tab"""
@@ -332,9 +669,6 @@ class TagManager:
         
         ttk.Button(button_frame, text="New Tag", command=self.new_tag).pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Button(button_frame, text="Delete Tag", command=self.delete_tag).pack(side=tk.LEFT, fill=tk.X, expand=True)
-        
-        # Quit button at bottom of left panel
-        ttk.Button(left_frame, text="Quit", command=self.quit_app).pack(fill=tk.X, pady=(10, 0))
         
         # Right panel - tag editor (this will expand to fill remaining space)
         editor_container = ttk.Frame(content_container)
@@ -408,8 +742,7 @@ class TagManager:
         ttk.Label(settings_container, text="Serial Port:").grid(row=0, column=0, sticky=tk.W, pady=5, padx=5)
         self.serial_port_var = tk.StringVar(value=self.config["settings"].get("serial_port", "/dev/ttyACM0"))
         self.serial_port_entry = ttk.Entry(settings_container, textvariable=self.serial_port_var, width=30)
-        self.serial_port_entry.grid(row=0, column=1, sticky=tk.W+tk.E, pady=5, padx=5)
-        ttk.Button(settings_container, text="Detect", command=self.detect_serial_ports).grid(row=0, column=2, padx=5)
+        self.serial_port_entry.grid(row=0, column=1, sticky=tk.W, pady=5, padx=5)
         
         # Removal delay
         ttk.Label(settings_container, text="Removal Delay (seconds):").grid(row=1, column=0, sticky=tk.W, pady=5, padx=5)
@@ -417,8 +750,7 @@ class TagManager:
         self.removal_delay_spinbox = ttk.Spinbox(settings_container, from_=0.0, to=10.0, increment=0.1, 
                                                 textvariable=self.removal_delay_var, width=10)
         self.removal_delay_spinbox.grid(row=1, column=1, sticky=tk.W, pady=5, padx=5)
-        ttk.Label(settings_container, text="(Time to prevent accidental disk removal)").grid(row=1, column=2, sticky=tk.W, padx=5)
-        
+                
         # Desktop notifications
         ttk.Label(settings_container, text="Desktop Notifications:").grid(row=2, column=0, sticky=tk.W, pady=5, padx=5)
         self.notifications_var = tk.BooleanVar(value=self.config["settings"].get("desktop_notifications", True))
@@ -432,16 +764,14 @@ class TagManager:
         self.notification_timeout_spinbox = ttk.Spinbox(settings_container, from_=1000, to=30000, increment=1000, 
                                                        textvariable=self.notification_timeout_var, width=10)
         self.notification_timeout_spinbox.grid(row=3, column=1, sticky=tk.W, pady=5, padx=5)
-        ttk.Label(settings_container, text="(How long notifications stay visible)").grid(row=3, column=2, sticky=tk.W, padx=5)
-        
+                
         # Auto launch manager
         ttk.Label(settings_container, text="Auto Launch Manager:").grid(row=4, column=0, sticky=tk.W, pady=5, padx=5)
         self.auto_launch_var = tk.BooleanVar(value=self.config["settings"].get("auto_launch_manager", True))
         ttk.Checkbutton(settings_container, variable=self.auto_launch_var).grid(row=4, column=1, sticky=tk.W, pady=5, padx=5)
-        ttk.Label(settings_container, text="(Auto-open manager for new tags)").grid(row=4, column=2, sticky=tk.W, padx=5)
-        
+                
         # Save settings button
-        ttk.Button(settings_container, text="Save Settings", command=self.save_settings).grid(row=5, column=1, pady=20)
+        ttk.Button(settings_container, text="Save Settings", command=self.save_settings).grid(row=5, column=0, columnspan=3, pady=20)
         
         # Status label
         self.settings_status_var = tk.StringVar(value="Settings loaded")
@@ -461,29 +791,6 @@ class TagManager:
             self.notification_timeout_spinbox.config(state="normal")
         else:
             self.notification_timeout_spinbox.config(state="disabled")
-    
-    def detect_serial_ports(self):
-        """Detect available serial ports"""
-        import glob
-        ports = []
-        
-        # Common Linux serial ports
-        possible_ports = [
-            "/dev/ttyACM*",  # Arduino Uno, Leonardo
-            "/dev/ttyUSB*",  # USB serial adapters
-            "/dev/ttyS*",    # Physical serial ports
-            "/dev/rfidisk"   # Custom udev rule
-        ]
-        
-        for pattern in possible_ports:
-            ports.extend(glob.glob(pattern))
-        
-        if ports:
-            port_list = "\n".join(ports)
-            messagebox.showinfo("Detected Serial Ports", 
-                              f"Available serial ports:\n\n{port_list}\n\nCurrent: {self.serial_port_var.get()}")
-        else:
-            messagebox.showwarning("No Serial Ports", "No serial ports detected. Make sure your Arduino is connected.")
     
     def save_settings(self):
         """Save configuration settings"""
@@ -691,7 +998,7 @@ def main():
     root = tk.Tk()
     app = TagManager(root)
     
-    # Start on tags tab by default (changed from settings tab)
+    # Start on tags tab by default
     if len(sys.argv) == 1 and app.singleton.is_primary:
         app.notebook.select(0)  # Switch to tags tab (index 0)
     
