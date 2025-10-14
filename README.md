@@ -191,7 +191,7 @@ Log out and back in, or reboot. If everything went smoothly and you see "Ready/I
 > [!NOTE]
 > There is a 10 second delay in launching the app during boot. This is on purpose to ensure serial bus has settled and environment is set.  
 > However, on some setups, there may be some instability (a couple of resets of the arduino) as the system enumerates the buses during boot.
-> Give it some seconds and try again once the OLED screen consistently reads "Insert Disk".  
+> Give it a minute after a fresh boot/reboot and try again once the OLED screen consistently reads "Insert Disk".  
 
 Skip to the "Configuring RFIDisk" section.  
 
@@ -211,7 +211,7 @@ rm -rf rfidisk
 
 ---
 ## Manual Installation
-If install scripts fails, or you don't trust it, here are step by step instructions for manual installation of RFIDisk.  
+If the install scripts fails, or you don't trust it, here are step by step instructions for manual installation of RFIDisk.  
 
 ### Prerequisites
 The python script requires psutil and serial modules. Make sure to install them:  
@@ -246,12 +246,25 @@ arduino-cli upload rfidisk.ino -p /dev/ttyACM0 -b arduino:avr:uno
 > If your setup has another device path for the arduino, replace /dev/ttyACM0 with yours.  
 
 If everything was succesful, the OLED Display should now show a logo (RFIDisk) and firmware version.  
+To start RFIDisk manually, type:  
+```
+python3 ./rfidisk.py
+```
 
 ---
 
 ## RFIDisk Manager
+This is the app that you interacti with to configure and manage RFIDisk.  
+Open RFIDisk Manager via start menu.  
+
+<img width="739" height="721" alt="RFIDisk Manager" src="https://github.com/user-attachments/assets/9cfbc301-d578-4767-be6c-4864a9980690" />
+
+
 ### Configuring rfidisk
 Open RFIDisk Manager (via start menu) and click on the Configuration Tab:  
+
+<img width="444" height="328" alt="RFIDisk Manager Settings" src="https://github.com/user-attachments/assets/b68884b3-0da5-42a6-baf0-b7ca180318ca" />
+
 
 ```Serial Port: /dev/ttyACM0```  
 
@@ -282,22 +295,11 @@ Changes take effect immediately. Keep reading for details.
 ## Using RFIDisk
 
 RFIDisk should start automatically upon login if you installed it using the script.  
-To start RFIDisk manually, go to the directory of the project and type:  
-
-```python3 ./rfidisk.py```  
 
 - The app should initialize, and on the OLED screen of the device you should be able to see a "Ready/Insert Disk" message. Insert a floppy into the drive.
-- A window should pop open with a new entry already created and the Tag ID field automatically completed. Remove the disk now and edit the followind fields:  
+- RFIDisk Manager should automatically pop open with a new entry already created and the Tag ID field automatically completed. Remove the disk now and edit the followind fields:  
 
-```
-Tag ID:              a1b2c3d4
-Launch Command:
-Display Line 1:      new entry
-Display Line 2:      convifugre me
-Display Line 3:      edit rfidisk_tags.json
-Display Line 4:      a1b2c3d4
-Terminate Command:
-```
+<img width="378" height="262" alt="RFIDisk Manager New Tag" src="https://github.com/user-attachments/assets/38867cf5-7aa0-497f-9bf9-6268a00593ee" />
 
 The Tag ID ("a1b2c3d4") at the top will be different and is the unique ID of the NFC tag. Don't touch this value.  
 Launch command: Type here the command you want to execute when this disk is inserted. You can also browse for the executable.  
@@ -311,15 +313,7 @@ Terminate command: Useful when launching Steam games (keep reading).
 
 Here is an example of an entry, properly configured and formatted:  
 
-```
-Tag ID:              1d0dc0070d1080
-Launch Command:      /usr/bin/gzdoom -iwad /home/user/DOOM.WAD
-Display Line 1:      DOOM
-Display Line 2:      GZDoom Engine
-Display Line 3:      1993
-Display Line 4:      id Software
-Terminate Command:
-```
+<img width="458" height="215" alt="RFIDisk Manager Full Tag" src="https://github.com/user-attachments/assets/12a1846b-84c0-450a-9090-86f507bb3483" />
 
 >[!TIP]
 >We can leave the "Terminate Command" blank for all native linux titles. The script is aware of the whole process tree and can sucessfully track and terminate most applications.  
@@ -406,15 +400,8 @@ In the example of Cyberpunk 2077, the proccess name is "GameThread".
 
 After all this work, now we can build a Steam game entry:
 
-```
-Tag ID:              1d0dc0070d1080
-Launch Command:      steam steam://rungameid/1091500
-Display Line 1:      Cyberpunk 2077
-Display Line 2:      Phantom Liberty
-Display Line 3:      2020-2023
-Display Line 4:      CDProjectRed
-Terminate Command:   killall GameThread
-```
+<img width="380" height="217" alt="2025-10-14T18:30:53,591035808+03:00" src="https://github.com/user-attachments/assets/3febd89b-1f19-4c17-a427-bbf8b1351b25" />
+
 
 ---
 
