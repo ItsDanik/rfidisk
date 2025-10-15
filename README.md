@@ -1,4 +1,4 @@
-<img width="1794" height="973" alt="3D" src="https://github.com/user-attachments/assets/7a0db381-44d1-4340-8a02-d670594e7833" />
+<img width="400" height="100" alt="rfidisk" src="https://github.com/user-attachments/assets/3c0a8aa2-0b92-42ae-a640-bed1a01722c2" />  
 
 # 💾 RFIDisk — Physical App Launcher for Linux PC
 
@@ -24,6 +24,8 @@ This project is a combination of hardware and software:
 - The other one running on the host machine (Linux PC).  
 - The two applications talk between them via Serial USB.
 - Configuration and Tag Management is done via RFIDisk Manager (GUI App).
+
+<img width="1794" height="973" alt="3D" src="https://github.com/user-attachments/assets/7a0db381-44d1-4340-8a02-d670594e7833" />  
 
 ---
 
