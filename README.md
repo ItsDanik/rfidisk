@@ -409,4 +409,6 @@ After all this work, now we can build a Steam game entry:
 - Find a solution for the known issue with Proton (USB Momentarily Disconnects and Arduino reboots)  
 - Explore GameScope support (test game launching and make use of GameScope notification system)  
 - Potentially package it as a DeckyLoader plugin?
-  
+- Make RFIDisk manager themable (colors) with pre-installed light theme, dark theme, catppuccin mocha theme:  
+  A simple dropdown menu in RFIDisk manager selects theme. Themes should be located in rfidisk-manager-themes.json  
+
