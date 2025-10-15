@@ -259,8 +259,7 @@ python3 ./rfidisk.py
 This is the app that you interacti with to configure and manage RFIDisk.  
 Open RFIDisk Manager via start menu.  
 
-<img width="739" height="721" alt="RFIDisk Manager" src="https://github.com/user-attachments/assets/9cfbc301-d578-4767-be6c-4864a9980690" />
-
+<img width="735" height="714" alt="2025-10-15T17:57:45,933373967+03:00" src="https://github.com/user-attachments/assets/9b4043ce-6430-4463-a709-743e77f80c1b" />  
 
 ### Configuring rfidisk
 Open RFIDisk Manager (via start menu) and click on the Configuration Tab:  
