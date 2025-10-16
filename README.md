@@ -144,7 +144,7 @@ RC522 SDA ----- 10  Arduino
 ## Software Installation / Configuration
 
 ### Project File Structure
-This project consists of 6 files:  
+This project consists of 10 files:  
 ```
 - License             | Standard GNU GPL3.0 License  
 - README.md           | What you're reading now.  
@@ -154,8 +154,12 @@ This project consists of 6 files:
 - rfidisk.py          | The host software, running on our host machine. Wtieen in Python. This does the talking with the Arduino.  
 - rfidisk_config.json | This is the configuration file for the Python script. It also stores the RFID Tag database.  
 - rfidisk_tags.json   | This is the RFID Tag database. Edit this file to configure RFID Tag behaviour.  
-- rfidisk-manager.py  | A simple GUI manager that simplifies new tag entry and editing/removal of existing Tags.  
+- rfidisk-manager.py  | The GUI that the user interacts with to configure RFIDisk and manage Tag entries.  
+- rfidisk.png         | RFIDisk asset image.  
 ```
+>[!NOTE]  
+>```rfidisk_config.json``` and ```rfidisk_tage.json``` are not included in the release or the repository.
+>They are generated on first launch.  
 
 ---
 
