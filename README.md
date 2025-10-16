@@ -407,9 +407,15 @@ After all this work, now we can build a Steam game entry:
 ---
 
 ### TODO/Ideas List
-- Find a solution for the known issue with Proton (USB Momentarily Disconnects and Arduino reboots)  
-- Explore GameScope support (test game launching and make use of GameScope notification system)  
-- Potentially package it as a DeckyLoader plugin?
+
+Should:  
+- Explore GameScope support (test game launching and make use of GameScope notification system).  
+- Potentially package it as a DeckyLoader plugin?  
+
+Could:  
 - Make RFIDisk manager themable (colors) with pre-installed light theme, dark theme, catppuccin mocha theme:  
   A simple dropdown menu in RFIDisk manager selects theme. Themes should be located in rfidisk-manager-themes.json  
+- Make a python script that shows a more polished, larger notification upon disk insertion in the form of a bigger borderless window that appears on the center of the screen. Each entry could contain an extra field that contains path to image for display (along with preformatted text and potentially icons).  
 
+If ever:  
+- Find a solution for the known issue with Proton (USB Momentarily Disconnects and Arduino reboots).  
