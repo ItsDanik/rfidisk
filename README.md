@@ -1,4 +1,4 @@
-<img width="400" height="100" alt="rfidisk" src="https://github.com/user-attachments/assets/3c0a8aa2-0b92-42ae-a640-bed1a01722c2" />  
+<img width="1600" height="400" alt="rfidisk_logo_hires" src="https://github.com/user-attachments/assets/db51d7b5-dc35-477a-85e7-fceda9e2702f" />
 
 # 💾 RFIDisk — Physical App Launcher for Linux PC
 
