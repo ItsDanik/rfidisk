@@ -4,10 +4,7 @@
 
 **RFIDisk** turns RFID tags into *physical shortcuts* that launch games, apps, or scripts when inserted on a retro-styled "floppy drive" reader. Think of it as a cross between an RFID scanner and a USB floppy disk drive.  
 
-
-
 https://github.com/user-attachments/assets/157f7cc6-f476-471f-b4b7-5301d1c28b9b
-
 
 ---
 
@@ -31,30 +28,19 @@ This project is a combination of hardware and software:
 
 ## How It Works
 - Each RFID tag inside the disk corresponds to a command (e.g. `steam steam://rungameid/12345`).
-1. When a disk is inserted in the drive, the Arduino firmware identifies it and notifies the host.
-2. The Python service looks up the tag’s command in `rfidisk_config.json` and launches it.
-3. A notification is shown on the host machine.
-4. The OLED display updates in real time, showing metadata of the disk (user-configurable).
-5. When the disk is removed from the reader, the application is automatically terminated.
+1. When a disk is inserted in the drive, the Arduino firmware identifies it and notifies the host.  
+2. The Python service looks up the tag’s command in `rfidisk_config.json` and launches it.  
+3. A notification is shown on the host machine.  
+4. The OLED display updates in real time, showing metadata of the disk (user-configurable).  
+5. When the disk is removed from the reader, the application is automatically terminated.  
 
-This mode of operation closely resembles a cartridge-based game console system, only you don't have to reboot :)
-
----
+This mode of operation closely resembles a cartridge-based game console system, only you don't have to reboot :)  
 
 <img src="https://github.com/user-attachments/assets/9dd670ca-56e6-4e30-9336-dc6832b9829a" width="240">
-
 <img src="https://github.com/user-attachments/assets/92fac60e-d8e5-4bd7-88b9-1fdff2cd14ef" width="240">
-
 <img src="https://github.com/user-attachments/assets/b9502485-c848-4b90-ae61-77a5aa62d406" width="240">
-
 <img src="https://github.com/user-attachments/assets/eeecc4b2-6a04-49ed-a520-2e8493fd4019" width="240">
 
----
-
-### Coming Soon (?)
-- Gamescope support
-- Decky Loader plugin for Steam Deck integration  
-  
 ---
 
 ## WARNING!
@@ -120,7 +106,7 @@ RC522 SDA ----- 10  Arduino
 - Go to [https://makerworld.com/en/models/1875124-rfidisk-drive-disk](https://makerworld.com/en/models/1875124-rfidisk-drive-disk) and 3D print the project.  
 - Screw the OLED module on the 3D Printed Shell using 4x 4mm screws.  
 - Screw the two boards on the 3D Printed PCB Support Piece using 8x 4mm screws.  
-- Screw the whole PCB Support to the roof of the case using 4x 4mm screws.  
+- Screw the whole PCB Support to the top of the case (from the bottom) using 4x 4mm screws.  
 - Screw the bottom 3D Printed part to the bottom of the shell using 4x 6mm screws.
 - Stick the four rubber feet to the bottom of the case.
 - Connect the device to the PC, using a USB type-B to type-A cable.
@@ -184,14 +170,6 @@ chmod +x ./install.sh
 ./install.sh
 ```
 
-## Updating RFIDisk
-- From the install directory: 
-```
-git pull https://github.com/ItsDanik/rfidisk.git
-chmod +x ./install.sh
-./install.sh
-```
-  
 Log out and back in, or reboot. If everything went smoothly and you see "Ready/Insert Disk" on the device's OLED screen, congratulations!  
 
 > [!NOTE]
@@ -201,13 +179,26 @@ Log out and back in, or reboot. If everything went smoothly and you see "Ready/I
 
 Skip to the "Configuring RFIDisk" section.  
 
+## Updating RFIDisk
+- From the install directory: 
+```
+git pull https://github.com/ItsDanik/rfidisk.git
+chmod +x ./install.sh
+./install.sh
+```
+The script should automatically detect the older version installed and will offer to update.  
+
+> [!NOTE]
+> All files (including the Firmware) are always updated on every release (even if there were no changes), to simplify version control and ensure that
+> RFIDisk has the correct environment for its functions.  
+
 ## Uninstalling RFIDisk
 - From the install directory:
 ```
 ./install.sh --uninstall
 ```
 
-The app now will not launch on next login, and the RFID Manager is removed from the start menu. Your settings and Tag Database remains saved.  
+The app will not launch on next login, and the RFID Manager is removed from the start menu. Your settings and Tag Database remains saved.  
 To remove everything (you will lose all your config!):  
 
 ```
@@ -260,7 +251,7 @@ python3 ./rfidisk.py
 ---
 
 ## RFIDisk Manager
-This is the app that you interacti with to configure and manage RFIDisk.  
+This is the app that you interact with to configure and manage RFIDisk.  
 Open RFIDisk Manager via start menu.  
 
 <img width="735" height="714" alt="2025-10-15T17:57:45,933373967+03:00" src="https://github.com/user-attachments/assets/9b4043ce-6430-4463-a709-743e77f80c1b" />  
@@ -376,13 +367,8 @@ If successful, remember to update the rfidisk_config.json file:
 
 ## Bugs / Quirks:
 ### Proton Quirks
-When an application is launched via proton (ie most Steam games), for some reason the USB ports  
-on the host machine get reset. That means that the arduino resets. This is a known issue with  
-Proton, you can check it out [here](https://github.com/ValveSoftware/Proton/issues/6927).  
-To combat this, as a workaround, an overly-complex connection recovery routine has been implemented,  
-to avoid double launching of an app, and double notifications etc. It seems to be working ok, but  
-it is a hack. If anyone finds a better way to handle this, like prevent the USB device from disconnecting  
-when Proton initializes, please let me know.  
+When an application is launched via proton (ie Windows games), during the USB ports enumeration on the host machine get reset, causing the arduino to resets briefly momentarily. This is a known issue with Proton, you can check it out [here](https://github.com/ValveSoftware/Proton/issues/6927).  
+To combat this, as a workaround, an overly-complex connection recovery routine has been implemented, to avoid double launching of an app, and double notifications etc. It seems to be working ok, but it is a hack. If anyone finds a better way to handle this, like prevent the USB device from disconnecting when Proton initializes (completely hiding a USB port from proton?), please let me know.  
 
 ---
 
