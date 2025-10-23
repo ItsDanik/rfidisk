@@ -270,9 +270,14 @@ If have have more serial devices and want to set up a udev rule with a static cu
 ```Removal Delay (seconds): 0.0```  
 
 This ensures that a disk is not ejected by mistake. If you reinsert the disk during that time, the removal is not registered, and the app is not terminated.  
+
+```Disable Autolaunch```  
+
+This changes the behaviour of RFIDisk to NOT autolaunch the command associated with the disk. See below, "CLI Mode" for details.
+
 ```Desktop Notifications```  
 
-This enabled desktop notifications when a disk is inserted. Disable it if you want to disable desktop notifications.   
+This enables desktop notifications when a disk is inserted. Disable it if you want to disable desktop notifications.   
 
 ```Notification Timeout (ms): 8000```  
 
@@ -317,6 +322,20 @@ Here is an example of an entry, properly configured and formatted:
 Click on "Save Changes", quit the manager and insert the disk. The application should now launch!  
 Remove the disk and the application closes.  
 Repeat the configuration proccess for as many disks as you need.  
+
+---
+
+## Using RFIDisk (CLI mode)
+
+If you disable autolaunch, you can control RFIDisk via a terminal, resembling the way disk drives worked in 8-bit home micros. With the daemon running, use the following command line arguments:
+
+- ```rfidisk --list``` to display disk info
+- ```rfidisk --load``` to launch the app corresponding to the Tag entry of the disk
+- ```rfidisk --list-title``` to display the title of the disk entry in a single line format (useful for displaying in widgets like waybar etc).
+- ```rfidisk --help``` displays a help message.  
+
+> [!TIP]
+> If you remove the disk while the application is running, it still terminates the app.
 
 ---
 
