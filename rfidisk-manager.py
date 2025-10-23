@@ -15,7 +15,7 @@ import webbrowser  # Add this import
 TAGS_FILE = "rfidisk_tags.json"
 CONFIG_FILE = "rfidisk_config.json"
 LOCK_PORT = 47821  # Arbitrary port for instance checking
-VERSION = "0.93"  # Version number
+VERSION = "0.94"  # Version number
 GITHUB_URL = "https://github.com/ItsDanik/rfidisk"  # Add GitHub URL
 
 # Catppuccin Mocha Color Palette
@@ -506,7 +506,8 @@ class TagManager:
                 "removal_delay": 0.0,
                 "desktop_notifications": True,
                 "notification_timeout": 8000,
-                "auto_launch_manager": True
+                "auto_launch_manager": True,
+                "disable_autolaunch": False  # NEW: Add disable autolaunch option
             }
         }
         
@@ -750,32 +751,38 @@ class TagManager:
         self.removal_delay_spinbox = ttk.Spinbox(settings_container, from_=0.0, to=10.0, increment=0.1, 
                                                 textvariable=self.removal_delay_var, width=10)
         self.removal_delay_spinbox.grid(row=1, column=1, sticky=tk.W, pady=5, padx=5)
-                
+        
+        # NEW: Disable Autolaunch setting
+        ttk.Label(settings_container, text="Disable Autolaunch:").grid(row=2, column=0, sticky=tk.W, pady=5, padx=5)
+        self.disable_autolaunch_var = tk.BooleanVar(value=self.config["settings"].get("disable_autolaunch", False))
+        self.disable_autolaunch_check = ttk.Checkbutton(settings_container, variable=self.disable_autolaunch_var)
+        self.disable_autolaunch_check.grid(row=2, column=1, sticky=tk.W, pady=5, padx=5)
+        
         # Desktop notifications
-        ttk.Label(settings_container, text="Desktop Notifications:").grid(row=2, column=0, sticky=tk.W, pady=5, padx=5)
+        ttk.Label(settings_container, text="Desktop Notifications:").grid(row=3, column=0, sticky=tk.W, pady=5, padx=5)
         self.notifications_var = tk.BooleanVar(value=self.config["settings"].get("desktop_notifications", True))
         self.notifications_check = ttk.Checkbutton(settings_container, variable=self.notifications_var, 
                                                   command=self.toggle_notification_settings)
-        self.notifications_check.grid(row=2, column=1, sticky=tk.W, pady=5, padx=5)
+        self.notifications_check.grid(row=3, column=1, sticky=tk.W, pady=5, padx=5)
         
         # Notification timeout
-        ttk.Label(settings_container, text="Notification Timeout (ms):").grid(row=3, column=0, sticky=tk.W, pady=5, padx=5)
+        ttk.Label(settings_container, text="Notification Timeout (ms):").grid(row=4, column=0, sticky=tk.W, pady=5, padx=5)
         self.notification_timeout_var = tk.IntVar(value=self.config["settings"].get("notification_timeout", 8000))
         self.notification_timeout_spinbox = ttk.Spinbox(settings_container, from_=1000, to=30000, increment=1000, 
                                                        textvariable=self.notification_timeout_var, width=10)
-        self.notification_timeout_spinbox.grid(row=3, column=1, sticky=tk.W, pady=5, padx=5)
+        self.notification_timeout_spinbox.grid(row=4, column=1, sticky=tk.W, pady=5, padx=5)
                 
         # Auto launch manager
-        ttk.Label(settings_container, text="Auto Launch Manager:").grid(row=4, column=0, sticky=tk.W, pady=5, padx=5)
+        ttk.Label(settings_container, text="Auto Launch Manager:").grid(row=5, column=0, sticky=tk.W, pady=5, padx=5)
         self.auto_launch_var = tk.BooleanVar(value=self.config["settings"].get("auto_launch_manager", True))
-        ttk.Checkbutton(settings_container, variable=self.auto_launch_var).grid(row=4, column=1, sticky=tk.W, pady=5, padx=5)
+        ttk.Checkbutton(settings_container, variable=self.auto_launch_var).grid(row=5, column=1, sticky=tk.W, pady=5, padx=5)
                 
         # Save settings button
-        ttk.Button(settings_container, text="Save Settings", command=self.save_settings).grid(row=5, column=0, columnspan=3, pady=20)
+        ttk.Button(settings_container, text="Save Settings", command=self.save_settings).grid(row=6, column=0, columnspan=3, pady=20)
         
         # Status label
         self.settings_status_var = tk.StringVar(value="Settings loaded")
-        ttk.Label(settings_container, textvariable=self.settings_status_var).grid(row=6, column=0, columnspan=3, pady=5)
+        ttk.Label(settings_container, textvariable=self.settings_status_var).grid(row=7, column=0, columnspan=3, pady=5)
         
         # Set initial state for notification timeout
         self.toggle_notification_settings()
@@ -798,6 +805,7 @@ class TagManager:
             # Update config with current values
             self.config["settings"]["serial_port"] = self.serial_port_var.get().strip()
             self.config["settings"]["removal_delay"] = float(self.removal_delay_var.get())
+            self.config["settings"]["disable_autolaunch"] = bool(self.disable_autolaunch_var.get())  # NEW
             self.config["settings"]["desktop_notifications"] = bool(self.notifications_var.get())
             self.config["settings"]["notification_timeout"] = int(self.notification_timeout_var.get())
             self.config["settings"]["auto_launch_manager"] = bool(self.auto_launch_var.get())

@@ -10,11 +10,17 @@ import psutil
 import signal
 import argparse
 
-CONFIG_FILE = "rfidisk_config.json"
-TAGS_FILE = "rfidisk_tags.json"
+# Get the directory where the script is located
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Use absolute paths for config files
+CONFIG_FILE = os.path.join(SCRIPT_DIR, "rfidisk_config.json")
+TAGS_FILE = os.path.join(SCRIPT_DIR, "rfidisk_tags.json")
+SHARED_FILE = "/dev/shm/rfidisk"
+LOAD_FILE = "/dev/shm/rfidisk-load"
 
 # Version number
-VERSION = "0.93"
+VERSION = "0.94"
 
 # Default configuration
 default_config = {
@@ -23,7 +29,8 @@ default_config = {
         "removal_delay": 0.0,
         "desktop_notifications": True,
         "notification_timeout": 8000,
-        "auto_launch_manager": True
+        "auto_launch_manager": True,
+        "disable_autolaunch": False
     }
 }
 
@@ -52,7 +59,6 @@ def load_config():
                 # Merge settings while preserving structure
                 if "settings" in user_config:
                     config["settings"].update(user_config["settings"])
-            print(f"Loaded config from {CONFIG_FILE}")
         except Exception as e:
             print(f"Error loading config: {e}")
     else:
@@ -69,7 +75,6 @@ def load_config():
                 for tag_id, tag_config in tags.items():
                     if "terminate" not in tag_config:
                         tag_config["terminate"] = ""
-            print(f"Loaded tags from {TAGS_FILE}")
         except Exception as e:
             print(f"Error loading tags: {e}")
     else:
@@ -116,13 +121,101 @@ class RFIDLauncher:
         # State tracking in RAM only
         self.app_was_launched_by_us = False
         self.recovery_mode = False  # Prevent notifications during recovery
+        self.pending_load_command = None  # Track command waiting for load
+
+    def create_shared_files(self):
+        """Create the shared RAM files upon initialization"""
+        try:
+            # Write initial ready state to shared file
+            content = f"Ready|Insert Disk||RFIDisk v{VERSION}"
+            with open(SHARED_FILE, 'w') as f:
+                f.write(content)
+            print(f"Created shared display file: {SHARED_FILE}")
+            
+            # Create empty load command file
+            with open(LOAD_FILE, 'w') as f:
+                f.write("")
+            print(f"Created shared load file: {LOAD_FILE}")
+            
+            return True
+        except Exception as e:
+            print(f"Error creating shared files: {e}")
+            return False
+
+    def update_shared_file(self, line1, line2, line3="", line4=""):
+        """Update the shared display file with current display info"""
+        try:
+            # Format: line1|line2|line3|line4
+            content = f"{line1}|{line2}|{line3}|{line4}"
+            with open(SHARED_FILE, 'w') as f:
+                f.write(content)
+            return True
+        except Exception as e:
+            print(f"Error updating shared file: {e}")
+            return False
+
+    def write_load_command(self, command):
+        """Write the launch command to the load file"""
+        try:
+            with open(LOAD_FILE, 'w') as f:
+                f.write(command)
+            self.pending_load_command = command
+            print(f"Written load command: {command}")
+            return True
+        except Exception as e:
+            print(f"Error writing load command: {e}")
+            return False
+
+    def clear_load_command(self):
+        """Clear the load command file"""
+        try:
+            with open(LOAD_FILE, 'w') as f:
+                f.write("")
+            self.pending_load_command = None
+            return True
+        except Exception as e:
+            print(f"Error clearing load command: {e}")
+            return False
+
+    def check_load_command(self):
+        """Check if there's a pending load command to execute"""
+        try:
+            if os.path.exists(LOAD_FILE):
+                with open(LOAD_FILE, 'r') as f:
+                    lines = f.read().strip().split('\n')
+                
+                if len(lines) >= 2 and lines[1] == "TRIGGER":
+                    command = lines[0].strip()
+                    print(f"Load trigger detected for command: {command}")
+                    # Clear the trigger but keep the command
+                    with open(LOAD_FILE, 'w') as f:
+                        f.write(command)
+                    return command
+            return None
+        except Exception as e:
+            print(f"Error checking load command: {e}")
+            return None
+
+    def delete_shared_files(self):
+        """Delete the shared RAM files on exit"""
+        try:
+            if os.path.exists(SHARED_FILE):
+                os.remove(SHARED_FILE)
+                print(f"Deleted shared display file: {SHARED_FILE}")
+            if os.path.exists(LOAD_FILE):
+                os.remove(LOAD_FILE)
+                print(f"Deleted shared load file: {LOAD_FILE}")
+            return True
+        except Exception as e:
+            print(f"Error deleting shared files: {e}")
+            return False
 
     def launch_tag_manager(self, tag_id):
         """Launch the tag manager GUI for configuring a new tag"""
         if not self.config["settings"].get("auto_launch_manager", True):
             return False
             
-        manager_script = os.path.join(os.path.dirname(__file__), "rfidisk-manager.py")
+        manager_script = os.path.join(SCRIPT_DIR, "rfidisk-manager.py")
         if os.path.exists(manager_script):
             try:
                 subprocess.Popen([sys.executable, manager_script, "--edit", tag_id])
@@ -190,6 +283,9 @@ class RFIDLauncher:
                         print("Arduino ready!")
                         self.serial_error_count = 0
                         
+                        # Create shared files when Arduino is ready
+                        self.create_shared_files()
+                        
                         # STATE RECOVERY: Restore previous state after reconnection
                         if self.reconnecting:
                             time.sleep(0.5)
@@ -200,6 +296,9 @@ class RFIDLauncher:
             
             print("Connected (no OK message)")
             self.serial_error_count = 0
+            
+            # Create shared files even without OK message
+            self.create_shared_files()
             
             # STATE RECOVERY: Still restore state even without OK message
             if self.reconnecting:
@@ -297,6 +396,9 @@ class RFIDLauncher:
         # Store the current display state
         self.last_display_state = (line1, line2, line3, line4)
         
+        # Update the shared RAM file with the current display info
+        self.update_shared_file(line1, line2, line3, line4)
+        
         # Truncate strings
         line1_trunc = line1[:20]
         line2_trunc = line2[:20]
@@ -339,9 +441,8 @@ class RFIDLauncher:
             return False
             
         try:
-            # Get the directory where the script is located
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            icon_path = os.path.join(script_dir, "floppy.png")
+            # Use the script directory to find the icon
+            icon_path = os.path.join(SCRIPT_DIR, "floppy.png")
             
             # Check if notify-send is available
             result = subprocess.run(['which', 'notify-send'], capture_output=True)
@@ -455,6 +556,8 @@ class RFIDLauncher:
         finally:
             self.active_process = None
             self.process_tree_pids = []
+            # NEW: Reset launch tracking when process is terminated
+            self.app_was_launched_by_us = False
 
     def close_current_app(self):
         """Close current app using appropriate termination method"""
@@ -482,7 +585,8 @@ class RFIDLauncher:
             
             # Don't process the same tag if app is already running and was launched by us
             if (self.active_tag == tag_id and 
-                self.app_was_launched_by_us):
+                self.app_was_launched_by_us and
+                self.is_process_running()):  # NEW: Also check if process is actually running
                 print(f"Tag {tag_id} already active with app launched by us, ignoring")
                 return
                 
@@ -539,17 +643,27 @@ class RFIDLauncher:
                             "0"
                         )
                 
-                # Launch app if command is specified and not already launched by us
-                elif (command and 
-                    not self.app_was_launched_by_us):
-                    print(f"Launch: {tag_config['command']}")
-                    self.launch_application(
-                        tag_config['command'], 
-                        tag_config.get("line1", "App"),
-                        tag_config.get("line2", "")
-                    )
+                # Handle autolaunch logic with load command file
+                elif command and not self.app_was_launched_by_us:
+                    if self.config["settings"].get("disable_autolaunch", False):
+                        # Autolaunch disabled - write command to load file
+                        print(f"Autolaunch disabled - writing command to load file")
+                        self.write_load_command(command)
+                        self.send_desktop_notification(
+                            "RFIDisk Ready", 
+                            f"{tag_config.get('line1', 'App')} ready\nUse 'rfidisk.py --load' to launch"
+                        )
+                    else:
+                        # Autolaunch enabled - launch directly
+                        print(f"Launch: {tag_config['command']}")
+                        self.launch_application(
+                            tag_config['command'], 
+                            tag_config.get("line1", "App"),
+                            tag_config.get("line2", "")
+                        )
                 elif self.app_was_launched_by_us:
                     print("App already launched by us, not relaunching")
+                    
             else:
                 # Unknown tag - create/update new entry
                 self.active_tag = tag_id
@@ -593,6 +707,7 @@ class RFIDLauncher:
                 if self.active_tag == tag_id:
                     self.close_current_app()
                     self.active_tag = None
+                    self.clear_load_command()  # Clear load command on disk removal
                     self.send_display_command("Ready", "Insert Disk", "", f"RFIDisk v{VERSION}", "0")
                     print("App closed")
 
@@ -623,6 +738,12 @@ class RFIDLauncher:
 
     def run(self):
         print(f"Starting RFIDisk v.{VERSION}...")
+        
+        # Check if autolaunch is disabled
+        if self.config["settings"].get("disable_autolaunch", False):
+            print("AUTOLAUNCH DISABLED - Inserting disks will not auto-launch apps")
+            print("Use 'python3 rfidisk.py --load' to launch the current app")
+        
         if not self.connect_serial():
             return
         
@@ -632,15 +753,52 @@ class RFIDLauncher:
         self.send_display_command("Ready", "Insert Disk", "", f"RFIDisk v{VERSION}", "0")
         
         try:
+            load_check_counter = 0
+            process_check_counter = 0
             while self.running:
+                # Check for serial data
                 data = self.read_serial()
                 if data:
                     self.process_serial_data(data)
+                
+                # NEW: Check if process is still running (every 2 seconds)
+                process_check_counter += 1
+                if process_check_counter >= 20:  # 20 * 0.1s = 2 seconds
+                    process_check_counter = 0
+                    if (self.app_was_launched_by_us and 
+                        self.active_process and 
+                        not self.is_process_running()):
+                        print("Process is no longer running - resetting launch tracking")
+                        self.app_was_launched_by_us = False
+                        self.active_process = None
+                        self.process_tree_pids = []
+                
+                # Check for load commands every 1 second (instead of every loop)
+                load_check_counter += 1
+                if load_check_counter >= 10:  # 10 * 0.1s = 1 second
+                    load_check_counter = 0
+                    load_command = self.check_load_command()
+                    if load_command and self.active_tag and not self.app_was_launched_by_us:
+                        print(f"Executing load command: {load_command}")
+                        tag_config = self.tags.get(self.active_tag, {})
+                        success = self.launch_application(
+                            load_command,
+                            tag_config.get("line1", "App"),
+                            tag_config.get("line2", "")
+                        )
+                        if success:
+                            print("App launched successfully via load command")
+                        else:
+                            print("Failed to launch app via load command")
+                
                 time.sleep(0.1)
                 
         except KeyboardInterrupt:
             print("\nShutting down...")
             self.running = False
+        finally:
+            # Ensure shutdown is always called
+            self.shutdown()
 
     def shutdown(self):
         self.running = False
@@ -649,7 +807,123 @@ class RFIDLauncher:
                 self.serial_conn.close()
             except:
                 pass
+        # Delete the shared RAM files on shutdown
+        self.delete_shared_files()
         print(f"RFIDisk v.{VERSION} stopped")
+
+def handle_load_command():
+    """Handle the --load command by writing the trigger"""
+    try:
+        if not os.path.exists(LOAD_FILE):
+            print("No app ready to load - insert a disk first")
+            return False
+        
+        with open(LOAD_FILE, 'r') as f:
+            current_content = f.read().strip()
+        
+        if current_content:
+            # Add trigger to existing command
+            with open(LOAD_FILE, 'w') as f:
+                f.write(f"{current_content}\nTRIGGER")
+            print("Load trigger activated - daemon should launch the app")
+            return True
+        else:
+            print("No app ready to load - insert a disk first")
+            return False
+            
+    except Exception as e:
+        print(f"Error handling load command: {e}")
+        return False
+
+def handle_list_command():
+    """Handle the --list command by displaying formatted info"""
+    try:
+        if not os.path.exists(SHARED_FILE):
+            print("RFIDisk daemon not running or no disk inserted")
+            return False
+        
+        # Read display info
+        with open(SHARED_FILE, 'r') as f:
+            display_content = f.read().strip()
+
+        # Parse display lines
+        parts = display_content.split('|')
+        line1 = parts[0] if len(parts) > 0 else ""
+        line2 = parts[1] if len(parts) > 1 else ""
+        line3 = parts[2] if len(parts) > 2 else ""
+        line4 = parts[3] if len(parts) > 3 else ""
+
+        # Check if no disk is inserted (ready state)
+        if line1 == "Ready" and line2 == "Insert Disk":
+            print(f"RFIDisk v{VERSION}\n")
+            print("No disk")
+            return True
+        
+        # Get launch command
+        launch_command = ""
+        if os.path.exists(LOAD_FILE):
+            with open(LOAD_FILE, 'r') as f:
+                launch_content = f.read().strip()
+                # Remove TRIGGER line if present
+                if '\n' in launch_content:
+                    launch_command = launch_content.split('\n')[0]
+                else:
+                    launch_command = launch_content
+        
+        # Get terminate command and tag ID (if we can find the active tag)
+        terminate_command = ""
+        tag_id = ""
+        try:
+            # Try to find the active tag by matching line1 with tag configurations
+            config, tags = load_config()
+            for current_tag_id, tag_config in tags.items():
+                if (tag_config.get('line1', '') == line1 and 
+                    tag_config.get('line2', '') == line2):
+                    terminate_command = tag_config.get('terminate', '')
+                    tag_id = current_tag_id
+                    break
+        except:
+            pass  # If we can't load tags, just leave terminate_command empty
+        
+        # Output formatted information
+        print(f"RFIDisk v{VERSION}\n")
+        print(f"Tag ID:       {tag_id}")
+        print(f"Launch:       {launch_command}")
+        print(f"Terminate:    {terminate_command}")
+        print("")
+        print(line1)
+        print(line2)
+        print(line3)
+        print(line4)
+        return True
+        
+    except Exception as e:
+        print(f"Error handling list command: {e}")
+        return False
+
+def handle_list_title_command():
+    """Handle the --list-title command by displaying only line1 and line2"""
+    try:
+        if not os.path.exists(SHARED_FILE):
+            return False
+        
+        # Read display info
+        with open(SHARED_FILE, 'r') as f:
+            display_content = f.read().strip()
+        
+        # Parse display lines
+        parts = display_content.split('|')
+        line1 = parts[0] if len(parts) > 0 else ""
+        line2 = parts[1] if len(parts) > 1 else ""
+        
+        # Format as "line1 line2" (replace first pipe with space, remove everything after second pipe)
+        formatted_title = f"{line1} {line2}".strip()
+        print(formatted_title)
+        
+        return True
+        
+    except Exception as e:
+        return False
 
 def print_warning():
     """Print warning message in red text"""
@@ -672,39 +946,67 @@ def print_warning():
         print(f"{BOLD}{line}{RESET}")
 
 def main():
-    # Parse command line arguments - only help remains
+    # Parse command line arguments including --load, --list, and --list-title
     parser = argparse.ArgumentParser(
-        description='💾 RFIDisk - Physical App Launcher for Linux PC\n\n'
+        description='💾 RFIDisk - Physical App Launcher\n\n'
                    'Reads RFID tags through a hardware rfidisk USB device\n'
                    'and launches/terminates games, apps, or scripts.',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
 
-CONFIGURATION:
-  Edit rfidisk_config.json for settings (serial port, delays, notifications)
-  Edit rfidisk_tags.json for RFID tag configurations
+Read https://github.com/ItsDanik/rfidisk/blob/main/README.md for more info.
 
-SERVICE MANAGEMENT:
-  systemctl --user status rfidisk.service    # Check service status
-  journalctl --user-unit=rfidisk.service -f # View service logs
-  systemctl --user restart rfidisk.service  # Restart service
-
-INSTALLATION:
-  Use the install.sh script for service installation and management
         '''
     )
     
+    # Add arguments
+    parser.add_argument('--load', action='store_true',
+                       help='Launch the app for the currently inserted disk')
+    parser.add_argument('--list', action='store_true',
+                       help='Display current disk info, launch command, and terminate command')
+    parser.add_argument('--list-title', action='store_true',
+                       help='Display only the title of current disk (line1 & line2 of entry)')
+    
     args = parser.parse_args()
     
-    # Print warning message first
-    print_warning()
-        
-    launcher = RFIDLauncher()
-    try:
-        launcher.run()
-    except Exception as e:
-        print(f"Fatal error: {e}")
-        launcher.shutdown()
+    # Handle mutually exclusive arguments
+    arg_count = sum([args.load, args.list, args.list_title])
+    if arg_count > 1:
+        print("Error: --load, --list, and --list-title are mutually exclusive")
+        sys.exit(1)
+    
+    # Print warning message only for daemon mode
+    if not any([args.load, args.list, args.list_title]):
+        print_warning()
+    
+    # Handle --load mode
+    if args.load:
+        print("Load mode: Triggering app launch via daemon...")
+        if handle_load_command():
+            print("Load command sent successfully")
+        else:
+            print("Failed to trigger load command")
+            sys.exit(1)
+    
+    # Handle --list mode
+    elif args.list:
+        if not handle_list_command():
+            print("No disk information available")
+            sys.exit(1)
+    
+    # Handle --list-title mode
+    elif args.list_title:
+        if not handle_list_title_command():
+            sys.exit(1)
+    
+    else:
+        # Normal daemon mode
+        launcher = RFIDLauncher()
+        try:
+            launcher.run()
+        except Exception as e:
+            print(f"Fatal error: {e}")
+            launcher.shutdown()
 
 if __name__ == "__main__":
     main()

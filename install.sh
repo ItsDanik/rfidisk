@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Installer Version = "0.93"
+# Installer Version = "0.94"
 
 # RFIDisk Installation Script
 set -e
@@ -27,6 +27,154 @@ print_warning() {
 
 print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Function to detect user's shell and get config file
+detect_shell_and_config() {
+    local shell_name=$(basename "$SHELL")
+    local config_file=""
+    
+    case "$shell_name" in
+        bash)
+            if [ -f "$HOME/.bashrc" ]; then
+                config_file="$HOME/.bashrc"
+            elif [ -f "$HOME/.bash_profile" ]; then
+                config_file="$HOME/.bash_profile"
+            fi
+            ;;
+        zsh)
+            if [ -f "$HOME/.zshrc" ]; then
+                config_file="$HOME/.zshrc"
+            fi
+            ;;
+        fish)
+            if [ -f "$HOME/.config/fish/config.fish" ]; then
+                config_file="$HOME/.config/fish/config.fish"
+            fi
+            ;;
+        *)
+            config_file=""
+            ;;
+    esac
+    
+    echo "$shell_name:$config_file"
+}
+
+# Function to check if alias already exists
+alias_exists() {
+    local config_file="$1"
+    local alias_pattern="$2"
+    
+    if [ -z "$config_file" ] || [ ! -f "$config_file" ]; then
+        return 1
+    fi
+    
+    # Check for exact alias match
+    if grep -q "alias rfidisk=" "$config_file" 2>/dev/null; then
+        return 0
+    fi
+    
+    # For fish shell, check for different syntax
+    if [[ "$config_file" == *"fish/config.fish" ]] && grep -q "alias rfidisk" "$config_file" 2>/dev/null; then
+        return 0
+    fi
+    
+    return 1
+}
+
+# Function to add alias to shell config
+add_shell_alias() {
+    local shell_name="$1"
+    local config_file="$2"
+    local script_dir="$3"
+    
+    if [ -z "$config_file" ]; then
+        print_warning "No shell configuration file found for $shell_name"
+        return 1
+    fi
+    
+    # Create config file if it doesn't exist
+    if [ ! -f "$config_file" ]; then
+        mkdir -p "$(dirname "$config_file")"
+        touch "$config_file"
+    fi
+    
+    local alias_line=""
+    case "$shell_name" in
+        bash|zsh)
+            alias_line="alias rfidisk=\"python3 '$script_dir/rfidisk.py'\""
+            ;;
+        fish)
+            alias_line="alias rfidisk=\"python3 '$script_dir/rfidisk.py'\""
+            ;;
+        *)
+            print_warning "Unsupported shell: $shell_name"
+            return 1
+            ;;
+    esac
+    
+    # Add alias to config file
+    echo "" >> "$config_file"
+    echo "# RFIDisk alias - added by installer" >> "$config_file"
+    echo "$alias_line" >> "$config_file"
+    
+    print_success "Added rfidisk alias to $config_file"
+    print_status "You can now use 'rfidisk' command to start RFIDisk Manager"
+    return 0
+}
+
+# Function to offer alias installation
+offer_alias_installation() {
+    local script_dir=$(pwd)
+    
+    echo ""
+    print_status "Would you like to add a 'rfidisk' alias to your shell configuration?"
+    print_status "This will allow you to start RFIDisk Manager by simply typing 'rfidisk'"
+    echo ""
+    
+    # Detect shell and config
+    local shell_info=$(detect_shell_and_config)
+    local shell_name=$(echo "$shell_info" | cut -d: -f1)
+    local config_file=$(echo "$shell_info" | cut -d: -f2)
+    
+    if [ -n "$config_file" ]; then
+        print_status "Detected shell: $shell_name"
+        print_status "Config file: $config_file"
+        
+        # Check if alias already exists
+        if alias_exists "$config_file" "rfidisk"; then
+            print_success "rfidisk alias already exists in $config_file"
+            return 0
+        fi
+        
+        echo -n "Add 'rfidisk' alias to $config_file? [Y/n]: "
+        read -r response
+        if [[ "$response" =~ ^[Nn]$ ]]; then
+            print_status "Alias not added. You can manually add it later."
+        else
+            if add_shell_alias "$shell_name" "$config_file" "$script_dir"; then
+                print_status "Please restart your shell or run: source $config_file"
+            else
+                print_warning "Failed to add alias automatically"
+                print_status "You can manually add this line to your shell config:"
+                case "$shell_name" in
+                    bash|zsh)
+                        echo "  alias rfidisk=\"python3 '$script_dir/rfidisk.py'\""
+                        ;;
+                    fish)
+                        echo "  alias rfidisk=\"python3 '$script_dir/rfidisk.py'\""
+                        ;;
+                    *)
+                        echo "  alias rfidisk=\"python3 '$script_dir/rfidisk.py'\""
+                        ;;
+                esac
+            fi
+        fi
+    else
+        print_warning "Could not detect shell configuration file"
+        print_status "You can manually add this alias to your shell config:"
+        echo "  alias rfidisk=\"python3 '$script_dir/rfidisk.py'\""
+    fi
 }
 
 # Function to detect Hyprland and configure window rule
@@ -518,6 +666,9 @@ main_installation() {
     
     # Configure Hyprland window rule if detected
     configure_hyprland_window_rule
+    
+    # Offer to add shell alias
+    offer_alias_installation
     
     print_success "RFIDisk installation completed successfully!"
     echo ""
