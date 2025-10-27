@@ -170,6 +170,10 @@ chmod +x ./install.sh
 ./install.sh
 ```
 
+>[!NOTE]
+The script tries to autodetect distro/package manager, and automatically install all dependencies.  
+If it stumbles, it will hopefully tell you what went wrong so you can manually install it and run the install script again.  
+
 Log out and back in, or reboot. If everything went smoothly and you see "Ready/Insert Disk" on the device's OLED screen, congratulations!  
 
 > [!NOTE]
@@ -215,11 +219,18 @@ The python script requires psutil and serial modules. Make sure to install them:
 
 ```pip install pyserial psutil```  
 
-Also, you're going to need an Arduino dev environment. In this example we will use code-oss & arduino-cli.  
+>[!NOTE]
+> If your distro whines when you use pip because it has an "externally managed python environment",
+> install your libraries using your package manager (apt, dnf, pacman etc)
+
+Also, you're going to need an Arduino dev environment. In this example we will use arduino-cli.  
 The arduino sketch requires MFRC522, Adafruit GFX, and Adafruit SH110X libraries.  
 Make sure to install them. If using arduino-cli:  
 
-```arduino-cli lib install "Adafruit SH110X" "Adafruit GFX" MFRC522```  
+```
+arduino-cli core install arduino:avr
+arduino-cli lib install "Adafruit SH110X" "Adafruit GFX" MFRC522
+``` 
 
 The user should be able to get control of the serial port.  
 This means that the user must be in the uucp or dialout group.  
@@ -254,13 +265,19 @@ python3 ./rfidisk.py
 This is the app that you interact with to configure and manage RFIDisk.  
 Open RFIDisk Manager via start menu.  
 
-<img width="735" height="714" alt="2025-10-15T17:57:45,933373967+03:00" src="https://github.com/user-attachments/assets/9b4043ce-6430-4463-a709-743e77f80c1b" />  
+<img width="736" height="714" alt="2025-10-27T17:19:04,791128745+02:00" src="https://github.com/user-attachments/assets/de0971f7-7d53-4eab-9f25-93d7960ad6cb" />
 
 ### Configuring rfidisk
 Open RFIDisk Manager (via start menu) and click on the Configuration Tab:  
 
-<img width="444" height="328" alt="RFIDisk Manager Settings" src="https://github.com/user-attachments/assets/b68884b3-0da5-42a6-baf0-b7ca180318ca" />
+<img width="427" height="311" alt="2025-10-27T17:23:16,570329816+02:00" src="https://github.com/user-attachments/assets/66e1eed4-a6e5-42bf-b207-2e9959f55ecf" />
 
+```Theme```  
+
+Select a color scheme for the RFIDisk Manager. The default installation includes Light, Dark and Catppuccin (Latte, Frappe, Macchiato, Mocha variants).  
+
+>[!TIP]
+>Themes are stored in rfidisk_themes.json. You can edit the file to add your own themes.
 
 ```Serial Port: /dev/ttyACM0```  
 
@@ -339,7 +356,7 @@ If you disable autolaunch, you can control RFIDisk via a terminal, resembling th
 
 ---
 
-## Post-Installation optimizations
+## Post-ation optimizations
 
 ### Create udev rules for static device path
 If you have more than one serial devices, they might get mixed up if you rely on /dev/ttyACM0 path.  
@@ -422,7 +439,7 @@ Should:
 - Potentially package it as a DeckyLoader plugin?  
 
 Could:  
-- Make RFIDisk manager themable (colors) with pre-installed light theme, dark theme, catppuccin mocha theme:  
+- Make RFIDisk manager themable (colors) with pre-ed light theme, dark theme, catppuccin mocha theme:  
   A simple dropdown menu in RFIDisk manager selects theme. Themes should be located in rfidisk-manager-themes.json  
 - Seperate a python script to display configurable/themable notifications. Each entry could contain an extra field that contains path to image for display (along with preformatted text and potentially icons).  
 
