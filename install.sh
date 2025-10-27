@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Installer Version = "0.94"
+# Installer Version = "0.95"
 
 # RFIDisk Installation Script
 set -e
@@ -272,7 +272,7 @@ install_arduino_cli() {
                 install_arduino_cli_manual
             fi
             ;;
-        arch|manjaro)
+        arch|manjaro|cachyos)  # Added cachyos
             if command -v pacman &> /dev/null; then
                 sudo pacman -Sy --noconfirm arduino-cli
             else
@@ -294,6 +294,40 @@ install_arduino_cli_manual() {
         echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
         export PATH="$HOME/bin:$PATH"
     fi
+}
+
+# Function to install system dependencies based on distro
+install_system_dependencies() {
+    local distro=$1
+    print_status "Installing system dependencies for $distro..."
+    
+    case $distro in
+        ubuntu|debian)
+            sudo apt update
+            sudo apt install -y python3-pip python3-serial python3-psutil python3-tk
+            ;;
+        fedora|rhel|centos)
+            if command -v dnf &> /dev/null; then
+                sudo dnf install -y python3-pip python3-pyserial python3-psutil python3-tkinter
+            elif command -v yum &> /dev/null; then
+                sudo yum install -y python3-pip python3-pyserial python3-psutil tkinter
+            else
+                print_error "Cannot install dependencies - no package manager found"
+                return 1
+            fi
+            ;;
+        arch|manjaro|cachyos)  # Added cachyos
+            sudo pacman -Sy --noconfirm arduino-cli python-pyserial python-psutil tk
+            ;;
+        *)
+            print_warning "Cannot automatically install dependencies for $distro"
+            print_status "Please install manually: python3, pip, pyserial, psutil, tkinter"
+            return 1
+            ;;
+    esac
+    
+    print_success "System dependencies installed successfully"
+    return 0
 }
 
 # Function to install Python dependencies
@@ -329,7 +363,7 @@ install_tkinter() {
                 return 1
             fi
             ;;
-        arch|manjaro)
+        arch|manjaro|cachyos)  # Added cachyos
             sudo pacman -Sy --noconfirm tk
             ;;
         *)
@@ -371,7 +405,7 @@ check_and_install_tkinter() {
                 fedora|rhel|centos)
                     echo "  sudo dnf install python3-tkinter"
                     ;;
-                arch|manjaro)
+                arch|manjaro|cachyos)
                     echo "  sudo pacman -S tk"
                     ;;
                 *)
@@ -400,10 +434,35 @@ check_arduino_cli() {
     print_success "arduino-cli found"
 }
 
+# Function to install Arduino AVR core
+install_arduino_core() {
+    print_status "Installing Arduino AVR core..."
+    if ! arduino-cli core install arduino:avr; then
+        print_error "Failed to install Arduino AVR core"
+        exit 1
+    fi
+    print_success "Arduino AVR core installed successfully"
+}
+
 # Function to check Python dependencies and install if missing
 check_python_deps() {
+    print_status "Checking Python dependencies..."
+    
+    # Check if we can import the required modules
     if ! python3 -c "import serial, psutil" 2>/dev/null; then
-        print_warning "Python dependencies missing, installing..."
+        print_warning "Python dependencies missing, attempting to install via system package manager..."
+        local distro=$(detect_distro)
+        
+        if install_system_dependencies "$distro"; then
+            # Verify installation
+            if python3 -c "import serial, psutil" 2>/dev/null; then
+                print_success "Python dependencies installed successfully via system package manager"
+                return 0
+            fi
+        fi
+        
+        # Fallback to pip installation
+        print_warning "Falling back to pip installation..."
         install_python_deps
         
         # Verify installation
@@ -496,13 +555,35 @@ detect_arduino() {
     fi
 }
 
+# Function to ensure required groups exist and add user
+setup_serial_groups() {
+    print_status "Setting up serial port permissions..."
+    
+    # Check and create dialout group if needed
+    if ! getent group dialout > /dev/null; then
+        print_warning "dialout group not found, creating it..."
+        sudo groupadd dialout
+    fi
+    
+    # Check and create uucp group if needed
+    if ! getent group uucp > /dev/null; then
+        print_warning "uucp group not found, creating it..."
+        sudo groupadd uucp
+    fi
+    
+    # Add user to groups
+    local current_user=$(whoami)
+    sudo usermod -a -G dialout "$current_user"
+    sudo usermod -a -G uucp "$current_user"
+    
+    print_success "User $current_user added to dialout and uucp groups"
+}
+
 # Function to check serial port permissions
 check_serial_permissions() {
     if [ ! -w "$ARDUINO_DEVICE" ]; then
         print_warning "No write permission for $ARDUINO_DEVICE"
-        echo "Adding user to dialout group..."
-        sudo usermod -a -G dialout $(whoami)
-        sudo usermod -a -G uucp $(whoami)
+        setup_serial_groups
         print_warning "You need to logout and login again for group changes to take effect."
         echo "After logging back in, run this installer again."
         exit 1
@@ -649,6 +730,7 @@ main_installation() {
     
     # Check and install dependencies automatically
     check_arduino_cli
+    install_arduino_core  # Install AVR core
     check_python_deps
     check_and_install_tkinter
     
@@ -756,12 +838,14 @@ else
     print_status "No existing installation found"
     echo ""
     echo "This will:"
+    echo "  • Install Arduino CLI and AVR core"
     echo "  • Install Arduino libraries (Adafruit SH110X, Adafruit GFX Library, MFRC522)"
     echo "  • Upload firmware to Arduino"
     echo "  • Install desktop autostart entry (starts automatically on login)"
     echo "  • Install RFIDisk Manager application entry (accessible from app menu)"
     echo "  • Install Python dependencies (pyserial, psutil)"
     echo "  • Install tkinter for GUI tag manager"
+    echo "  • Set up serial port permissions"
     echo ""
     echo -n "Continue with installation? [Y/n]: "
     read -r response
