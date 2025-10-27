@@ -140,7 +140,8 @@ This project consists of 10 files:
 - rfidisk.py          | The host software, running on our host machine. Wtieen in Python. This does the talking with the Arduino.  
 - rfidisk_config.json | This is the configuration file for the Python script. It also stores the RFID Tag database.  
 - rfidisk_tags.json   | This is the RFID Tag database. Edit this file to configure RFID Tag behaviour.  
-- rfidisk-manager.py  | The GUI that the user interacts with to configure RFIDisk and manage Tag entries.  
+- rfidisk-manager.py  | The GUI that the user interacts with to configure RFIDisk and manage Tag entries.
+- rfidisk_themes.py   | You can edit this file to add your own custom color scheme on RFIDisk Manager.  
 - rfidisk.png         | RFIDisk asset image.  
 ```
 >[!NOTE]  
