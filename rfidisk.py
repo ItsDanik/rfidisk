@@ -20,7 +20,7 @@ SHARED_FILE = "/dev/shm/rfidisk"
 LOAD_FILE = "/dev/shm/rfidisk-load"
 
 # Version number
-VERSION = "0.94"
+VERSION = "0.95"
 
 # Default configuration
 default_config = {
