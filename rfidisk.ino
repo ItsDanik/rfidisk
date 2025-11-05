@@ -3,6 +3,8 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
+#include <EEPROM.h>
+
 
 #define RST_PIN 9
 #define SS_PIN 10
@@ -12,6 +14,9 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);
 
 bool tagPresent = false;
 String lastTagUid = "";
+char masterTagFromEEPROM[15];
+int eeAddress = 0;
+
 const char version[] PROGMEM = "v0.95";
 
 const unsigned char rfidisk_logo[] PROGMEM = {
@@ -42,7 +47,7 @@ const unsigned char steam_icon[] PROGMEM = {
 
 void setup() {
   Serial.begin(9600);
-
+  char scannedTag[15] = "000000000000000";
   // Initialize display
   if (!display.begin(0x3C, false)) {
     // If display fails, continue anyway
@@ -65,6 +70,7 @@ void setup() {
 
   Serial.println("OK");
 }
+
 
 void updateDisplay(const char* line1, const char* line2, const char* line3, const char* line4, byte iconType) {
   display.clearDisplay();
@@ -112,6 +118,7 @@ String getTagUid() {
     if (mfrc522.uid.uidByte[i] < 0x10) uid += "0";
     uid += String(mfrc522.uid.uidByte[i], HEX);
   }
+  EEPROM.get(eeAddress, masterTagFromEEPROM);
   return uid;
 }
 
@@ -137,7 +144,7 @@ void loop() {
   if (Serial.available() > 0) {
     String cmd = Serial.readStringUntil('\n');
     cmd.trim();
-
+    
     if (cmd.startsWith("D|")) {
       // Parse display command: D|line1|line2|line3|line4|iconType
       int p1 = cmd.indexOf('|');
@@ -145,26 +152,25 @@ void loop() {
       int p3 = cmd.indexOf('|', p2 + 1);
       int p4 = cmd.indexOf('|', p3 + 1);
       int p5 = cmd.indexOf('|', p4 + 1);
-
+      
       if (p1 != -1 && p2 != -1 && p3 != -1 && p4 != -1 && p5 != -1) {
         String line1 = cmd.substring(p1 + 1, p2);
         String line2 = cmd.substring(p2 + 1, p3);
         String line3 = cmd.substring(p3 + 1, p4);
         String line4 = cmd.substring(p4 + 1, p5);
         byte iconType = cmd.substring(p5 + 1).toInt();
-        Serial.print("Update display with data:");
-
+        
         updateDisplay(line1.c_str(), line2.c_str(), line3.c_str(), line4.c_str(), iconType);
       }
     }
   }
 
   // Check RFID
-  bool currentTagPresent = isTagPresent();
-
-  if (currentTagPresent && mfrc522.uid.size > 0) {
+  bool masterTagFromEEPROM = isTagPresent();
+  
+  if (masterTagFromEEPROM && mfrc522.uid.size > 0) {
     String currentUid = getTagUid();
-
+    
     if (!tagPresent) {
       // New tag detected
       Serial.print("ON:");
@@ -173,7 +179,6 @@ void loop() {
       lastTagUid = currentUid;
     } else if (currentUid != lastTagUid) {
       // Different tag detected
-      Serial.print("Different tag detected:");
       Serial.print("OF:");
       Serial.println(lastTagUid);
       Serial.print("ON:");
@@ -181,14 +186,12 @@ void loop() {
       lastTagUid = currentUid;
     }
     mfrc522.PICC_HaltA();
-  } else if (tagPresent && !currentTagPresent) {
+  } else if (tagPresent && !masterTagFromEEPROM) {
     // Tag was present but now it's gone
-    Serial.print("Tag was present but now it's gone:");
     Serial.print("OF:");
     Serial.println(lastTagUid);
     tagPresent = false;
     lastTagUid = "";
   }
-
-  delay(200);
+delay(5000);
 }
