@@ -9,15 +9,56 @@ import socket
 import psutil
 import time
 import threading
+import tempfile
 from PIL import Image, ImageTk
 import webbrowser
 
-TAGS_FILE = "rfidisk_tags.json"
-CONFIG_FILE = "rfidisk_config.json"
-THEME_FILE = "rfidisk_theme.json"
+# Directory where this script lives, so the manager works regardless of CWD
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Use absolute paths for all data files (do not rely on the current directory)
+TAGS_FILE = os.path.join(SCRIPT_DIR, "rfidisk_tags.json")
+CONFIG_FILE = os.path.join(SCRIPT_DIR, "rfidisk_config.json")
+THEME_FILE = os.path.join(SCRIPT_DIR, "rfidisk_theme.json")
+VERSION_FILE = os.path.join(SCRIPT_DIR, "version")
+LOGO_FILE = os.path.join(SCRIPT_DIR, "rfidisk.png")
 LOCK_PORT = 47821
-VERSION = "0.95"
 GITHUB_URL = "https://github.com/ItsDanik/rfidisk"
+
+
+def read_version():
+    """Read the version string from the shared 'version' file"""
+    try:
+        with open(VERSION_FILE, 'r') as f:
+            return f.read().strip()
+    except Exception:
+        return "unknown"
+
+
+def atomic_write_json(path, data):
+    """Write JSON to path atomically.
+
+    Writes to a temp file in the same directory, fsyncs it, then os.replace()s
+    it over the target so a crash mid-write can never corrupt the existing file.
+    """
+    dir_name = os.path.dirname(path) or "."
+    fd, tmp_path = tempfile.mkstemp(dir=dir_name, prefix=".tmp-", suffix=".json")
+    try:
+        with os.fdopen(fd, 'w') as f:
+            json.dump(data, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, path)
+    except Exception:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
+# Version number (single source of truth: the 'version' file)
+VERSION = read_version()
 
 # Default fallback theme with semantic UI element names
 COLORS = {
@@ -182,10 +223,9 @@ class TagManager:
                 theme_config = json.load(f)
             
             theme_config["current_theme"] = theme_name
-            
-            with open(THEME_FILE, 'w') as f:
-                json.dump(theme_config, f, indent=2)
-            
+
+            atomic_write_json(THEME_FILE, theme_config)
+
             print(f"Theme saved: {theme_name}")
             return True
         except Exception as e:
@@ -249,7 +289,7 @@ class TagManager:
     
     def load_logo(self):
         """Load the RFIDisk logo image"""
-        logo_path = "./rfidisk.png"
+        logo_path = LOGO_FILE
         if os.path.exists(logo_path):
             try:
                 image = Image.open(logo_path)
@@ -617,21 +657,19 @@ class TagManager:
     def save_tags(self):
         """Save tags to JSON file"""
         try:
-            with open(TAGS_FILE, 'w') as f:
-                json.dump(self.tags, f, indent=2)
+            atomic_write_json(TAGS_FILE, self.tags)
             return True
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save tags: {e}")
             return False
-    
+
     def save_config(self, config=None):
         """Save configuration to JSON file"""
         if config is None:
             config = self.config
-            
+
         try:
-            with open(CONFIG_FILE, 'w') as f:
-                json.dump(config, f, indent=2)
+            atomic_write_json(CONFIG_FILE, config)
             return True
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save config: {e}")
@@ -1002,9 +1040,55 @@ class TagManager:
         self.line4_var.set(tag_data.get('line4', ''))
         self.terminate_var.set(tag_data.get('terminate', ''))
     
+    def ask_string_themed(self, title, prompt):
+        """Themed replacement for simpledialog.askstring that follows the app theme"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title(title)
+        dialog.configure(bg=COLORS["bg_primary"])
+        dialog.transient(self.root)
+        dialog.resizable(False, False)
+
+        result = {"value": None}
+
+        container = ttk.Frame(dialog, padding=20)
+        container.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(container, text=prompt).pack(anchor=tk.W, pady=(0, 8))
+
+        entry_var = tk.StringVar()
+        entry = ttk.Entry(container, textvariable=entry_var, width=32)
+        entry.pack(fill=tk.X, pady=(0, 12))
+        entry.focus_set()
+
+        def on_ok(event=None):
+            result["value"] = entry_var.get()
+            dialog.destroy()
+
+        def on_cancel(event=None):
+            result["value"] = None
+            dialog.destroy()
+
+        button_frame = ttk.Frame(container)
+        button_frame.pack(fill=tk.X)
+        ttk.Button(button_frame, text="OK", command=on_ok).pack(side=tk.RIGHT, padx=(8, 0))
+        ttk.Button(button_frame, text="Cancel", command=on_cancel).pack(side=tk.RIGHT)
+
+        dialog.bind("<Return>", on_ok)
+        dialog.bind("<Escape>", on_cancel)
+
+        # Center over the main window
+        dialog.update_idletasks()
+        x = self.root.winfo_rootx() + (self.root.winfo_width() - dialog.winfo_width()) // 2
+        y = self.root.winfo_rooty() + (self.root.winfo_height() - dialog.winfo_height()) // 2
+        dialog.geometry(f"+{x}+{y}")
+
+        dialog.grab_set()
+        self.root.wait_window(dialog)
+        return result["value"]
+
     def new_tag(self):
         """Create a new tag entry"""
-        tag_id = simpledialog.askstring("New Tag", "Enter Tag ID:")
+        tag_id = self.ask_string_themed("New Tag", "Enter Tag ID:")
         if tag_id and tag_id not in self.tags:
             self.tags[tag_id] = {
                 'command': '',

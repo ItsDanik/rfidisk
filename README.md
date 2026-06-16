@@ -29,7 +29,7 @@ This project is a combination of hardware and software:
 ## How It Works
 - Each RFID tag inside the disk corresponds to a command (e.g. `steam steam://rungameid/12345`).
 1. When a disk is inserted in the drive, the Arduino firmware identifies it and notifies the host.  
-2. The Python service looks up the tag’s command in `rfidisk_config.json` and launches it.  
+2. The Python service looks up the tag’s command in `rfidisk_tags.json` and launches it.  
 3. A notification is shown on the host machine.  
 4. The OLED display updates in real time, showing metadata of the disk (user-configurable).  
 5. When the disk is removed from the reader, the application is automatically terminated.  
@@ -138,14 +138,14 @@ This project consists of 10 files:
 - install.sh          | Automatic installation script. You need to chmod +x it before you run it.  
 - rfidisk.ino         | The arduino firmware. Written in C++. We will compile and upload this to the Arduino.  
 - rfidisk.py          | The host software, running on our host machine. Wtieen in Python. This does the talking with the Arduino.  
-- rfidisk_config.json | This is the configuration file for the Python script. It also stores the RFID Tag database.  
+- rfidisk_config.json | This is the settings file for the Python script (serial port, delays, notifications etc).  
 - rfidisk_tags.json   | This is the RFID Tag database. Edit this file to configure RFID Tag behaviour.  
 - rfidisk-manager.py  | The GUI that the user interacts with to configure RFIDisk and manage Tag entries.
 - rfidisk_themes.py   | You can edit this file to add your own custom color scheme on RFIDisk Manager.  
 - rfidisk.png         | RFIDisk asset image.  
 ```
 >[!NOTE]  
->```rfidisk_config.json``` and ```rfidisk_tage.json``` are not included in the release or the repository.
+>```rfidisk_config.json``` and ```rfidisk_tags.json``` are not included in the release or the repository.
 >They are generated on first launch.  
 
 ---

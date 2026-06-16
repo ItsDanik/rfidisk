@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# Installer Version = "0.95"
-
 # RFIDisk Installation Script
 set -e
 
@@ -180,7 +178,7 @@ offer_alias_installation() {
 # Function to detect Hyprland and configure window rule
 configure_hyprland_window_rule() {
     # Check if Hyprland is running
-    if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ] || pgrep -x "hyprland" > /dev/null || [ -n "$XDG_CURRENT_DESKTOP" ] && [[ "$XDG_CURRENT_DESKTOP" == *"Hyprland"* ]]; then
+    if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ] || pgrep -x "hyprland" > /dev/null || [[ "$XDG_CURRENT_DESKTOP" == *"Hyprland"* ]]; then
         print_status "Hyprland detected - checking for window rule configuration..."
         
         local hyprland_conf="$HOME/.config/hypr/hyprland.conf"
@@ -474,11 +472,11 @@ check_python_deps() {
     print_success "Python dependencies found"
 }
 
-# Function to extract version from Python script
-get_python_version() {
-    local python_file="$1"
-    if [ -f "$python_file" ]; then
-        grep -E '^VERSION\s*=\s*"' "$python_file" | sed -E 's/^VERSION\s*=\s*"([^"]+)"/\1/' | head -1
+# Function to read the version string from a 'version' file in a given directory
+get_version_from_dir() {
+    local dir="$1"
+    if [ -f "$dir/version" ]; then
+        head -1 "$dir/version" | tr -d '[:space:]'
     else
         echo ""
     fi
@@ -501,23 +499,22 @@ get_installed_version() {
         echo "$desktop_version"
         return
     fi
-    
-    # Fallback: Extract Python script path from desktop file and get version from script
-    local python_script
-    python_script=$(grep "Exec=" "$desktop_file" | cut -d'=' -f2- | awk '{print $2}')
-    
-    if [ -z "$python_script" ] || [ ! -f "$python_script" ]; then
+
+    # Fallback: read the 'version' file from the installed project directory (Path= entry)
+    local installed_dir
+    installed_dir=$(grep -E '^Path=' "$desktop_file" | cut -d'=' -f2- | head -1)
+
+    if [ -z "$installed_dir" ]; then
         echo ""
         return
     fi
-    
-    # Get version from the installed Python script
-    get_python_version "$python_script"
+
+    get_version_from_dir "$installed_dir"
 }
 
 # Function to get the version we're going to install (from current directory)
 get_current_version() {
-    get_python_version "rfidisk.py"
+    get_version_from_dir "."
 }
 
 # Function to detect Arduino device
@@ -802,12 +799,12 @@ esac
 # Get current Python script version (to be installed) - from local rfidisk.py
 CURRENT_VERSION=$(get_current_version)
 if [ -z "$CURRENT_VERSION" ]; then
-    print_error "Could not find rfidisk.py in current directory"
+    print_error "Could not find 'version' file in current directory"
     echo "Please run this script from the RFIDisk project directory"
     exit 1
 fi
 
-print_status "Version to install (from local rfidisk.py): $CURRENT_VERSION"
+print_status "Version to install (from local 'version' file): $CURRENT_VERSION"
 
 # Check if already installed - get version from desktop entry
 INSTALLED_VERSION=$(get_installed_version)

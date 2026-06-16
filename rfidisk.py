@@ -6,9 +6,10 @@ import sys
 import json
 import os
 import platform
-import psutil
 import signal
 import argparse
+import copy
+import tempfile
 
 # Get the directory where the script is located
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -16,16 +17,27 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Use absolute paths for config files
 CONFIG_FILE = os.path.join(SCRIPT_DIR, "rfidisk_config.json")
 TAGS_FILE = os.path.join(SCRIPT_DIR, "rfidisk_tags.json")
+VERSION_FILE = os.path.join(SCRIPT_DIR, "version")
 SHARED_FILE = "/dev/shm/rfidisk"
 LOAD_FILE = "/dev/shm/rfidisk-load"
 
-# Version number
-VERSION = "0.95"
+
+def read_version():
+    """Read the version string from the shared 'version' file"""
+    try:
+        with open(VERSION_FILE, 'r') as f:
+            return f.read().strip()
+    except Exception:
+        return "unknown"
+
+
+# Version number (single source of truth: the 'version' file)
+VERSION = read_version()
 
 # Default configuration
 default_config = {
     "settings": {
-        "serial_port": "/dev/ACM0",
+        "serial_port": "/dev/ttyACM0",
         "removal_delay": 0.0,
         "desktop_notifications": True,
         "notification_timeout": 8000,
@@ -48,8 +60,8 @@ default_tags = {
 
 def load_config():
     """Load configuration from separate files"""
-    config = default_config.copy()
-    tags = default_tags.copy()
+    config = copy.deepcopy(default_config)
+    tags = copy.deepcopy(default_tags)
     
     # Load settings
     if os.path.exists(CONFIG_FILE):
@@ -84,11 +96,31 @@ def load_config():
     
     return config, tags
 
+def atomic_write_json(path, data):
+    """Write JSON to path atomically.
+
+    Writes to a temp file in the same directory, fsyncs it, then os.replace()s
+    it over the target so a crash mid-write can never corrupt the existing file.
+    """
+    dir_name = os.path.dirname(path) or "."
+    fd, tmp_path = tempfile.mkstemp(dir=dir_name, prefix=".tmp-", suffix=".json")
+    try:
+        with os.fdopen(fd, 'w') as f:
+            json.dump(data, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, path)
+    except Exception:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        raise
+
 def save_config(config):
     """Save configuration to config file"""
     try:
-        with open(CONFIG_FILE, 'w') as f:
-            json.dump(config, f, indent=2)
+        atomic_write_json(CONFIG_FILE, config)
         return True
     except Exception as e:
         print(f"Error saving config: {e}")
@@ -97,8 +129,7 @@ def save_config(config):
 def save_tags(tags):
     """Save tags to tags file"""
     try:
-        with open(TAGS_FILE, 'w') as f:
-            json.dump(tags, f, indent=2)
+        atomic_write_json(TAGS_FILE, tags)
         return True
     except Exception as e:
         print(f"Error saving tags: {e}")
@@ -110,7 +141,6 @@ class RFIDLauncher:
         self.serial_conn = None
         self.active_tag = None
         self.active_process = None
-        self.process_tree_pids = []
         self.running = True
         self.last_unknown_tag = None
         self.serial_error_count = 0
@@ -261,7 +291,7 @@ class RFIDLauncher:
 
     def connect_serial(self):
         """Connect to serial port with state recovery"""
-        port = self.config["settings"].get("serial_port", "/dev/rfidisk")
+        port = self.config["settings"].get("serial_port", "/dev/ttyACM0")
         try:
             if self.serial_conn and self.serial_conn.is_open:
                 self.serial_conn.close()
@@ -465,17 +495,6 @@ class RFIDLauncher:
         except Exception as e:
             return False
 
-    def get_full_process_tree(self, root_pid):
-        try:
-            process_tree = []
-            root_process = psutil.Process(root_pid)
-            process_tree.append(root_pid)
-            for child in root_process.children(recursive=True):
-                process_tree.append(child.pid)
-            return process_tree
-        except psutil.NoSuchProcess:
-            return []
-
     def is_process_running(self):
         """Check if the active process is still running"""
         if not self.active_process:
@@ -501,8 +520,7 @@ class RFIDLauncher:
             self.active_process = process
             self.app_was_launched_by_us = True  # Mark that we launched this app
             time.sleep(1.0)
-            
-            self.process_tree_pids = self.get_full_process_tree(process.pid)
+
             print(f"Launched: {process.pid}")
             
             return process
@@ -520,7 +538,7 @@ class RFIDLauncher:
             print(f"Using custom terminate command: {terminate_command}")
             try:
                 process = subprocess.Popen(
-                    terminate_command, 
+                    terminate_command,
                     shell=True,
                     preexec_fn=os.setsid
                 )
@@ -531,6 +549,11 @@ class RFIDLauncher:
                 print(f"Custom terminate command failed: {e}")
                 # Fall back to standard method if custom command fails
                 self.terminate_standard()
+            finally:
+                # Reset launch tracking (terminate_standard does this itself, but
+                # the custom-command success path must clear it too)
+                self.active_process = None
+                self.app_was_launched_by_us = False
         else:
             # Use standard termination method
             self.terminate_standard()
@@ -555,7 +578,6 @@ class RFIDLauncher:
             print(f"Standard termination error: {e}")
         finally:
             self.active_process = None
-            self.process_tree_pids = []
             # NEW: Reset launch tracking when process is terminated
             self.app_was_launched_by_us = False
 
@@ -701,7 +723,7 @@ class RFIDLauncher:
             print(f"Remove: {tag_id}")
             
             if tag_id == self.active_tag:
-                removal_delay = self.config["settings"].get("removal_delay", 2.0)
+                removal_delay = self.config["settings"].get("removal_delay", 0.0)
                 print(f"Wait {removal_delay}s...")
                 time.sleep(removal_delay)
                 if self.active_tag == tag_id:
@@ -771,7 +793,6 @@ class RFIDLauncher:
                         print("Process is no longer running - resetting launch tracking")
                         self.app_was_launched_by_us = False
                         self.active_process = None
-                        self.process_tree_pids = []
                 
                 # Check for load commands every 1 second (instead of every loop)
                 load_check_counter += 1
