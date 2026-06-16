@@ -357,7 +357,7 @@ If you disable autolaunch, you can control RFIDisk via a terminal, resembling th
 
 ---
 
-## Post-ation optimizations
+## Post-installation optimizations
 
 ### Create udev rules for static device path
 If you have more than one serial devices, they might get mixed up if you rely on /dev/ttyACM0 path.  
