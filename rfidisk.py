@@ -42,7 +42,9 @@ default_config = {
         "desktop_notifications": True,
         "notification_timeout": 8000,
         "auto_launch_manager": True,
-        "disable_autolaunch": False
+        "disable_autolaunch": False,
+        "oled_dim_delay": 20,
+        "oled_off_delay": 60
     }
 }
 
@@ -315,7 +317,10 @@ class RFIDLauncher:
                         
                         # Create shared files when Arduino is ready
                         self.create_shared_files()
-                        
+
+                        # Push OLED idle timers (re-applied on every reconnect)
+                        self.send_oled_config()
+
                         # STATE RECOVERY: Restore previous state after reconnection
                         if self.reconnecting:
                             time.sleep(0.5)
@@ -329,7 +334,10 @@ class RFIDLauncher:
             
             # Create shared files even without OK message
             self.create_shared_files()
-            
+
+            # Push OLED idle timers (re-applied on every reconnect)
+            self.send_oled_config()
+
             # STATE RECOVERY: Still restore state even without OK message
             if self.reconnecting:
                 time.sleep(0.5)
@@ -459,6 +467,24 @@ class RFIDLauncher:
             return False
         except Exception as e:
             print(f"Display error: {e}")
+            return False
+
+    def send_oled_config(self):
+        """Push OLED idle dim/off timeouts (seconds, 0 = disabled) to the Arduino.
+
+        The firmware stores these in EEPROM and does the idle timing itself, so
+        this only needs to run on connect and when the config changes."""
+        if not self.serial_conn or not self.serial_conn.is_open:
+            return False
+        try:
+            dim_s = int(self.config["settings"].get("oled_dim_delay", 0))
+            off_s = int(self.config["settings"].get("oled_off_delay", 0))
+            command = f"C|{dim_s}|{off_s}\n"
+            self.serial_conn.write(command.encode())
+            self.serial_conn.flush()
+            return True
+        except Exception as e:
+            print(f"OLED config send error: {e}")
             return False
 
     def send_desktop_notification(self, title, message):
@@ -614,7 +640,10 @@ class RFIDLauncher:
                 
             # Reload config and tags to get any changes
             self.config, self.tags = load_config()
-            
+
+            # Re-apply OLED idle timers in case they changed in the manager
+            self.send_oled_config()
+
             tag_config = self.tags.get(tag_id)
             if tag_config:
                 # Only close current app if it's a different tag

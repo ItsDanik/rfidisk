@@ -1,6 +1,7 @@
 #include <SPI.h>
 #include <MFRC522.h>
 #include <Wire.h>
+#include <EEPROM.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
 
@@ -12,7 +13,22 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);
 
 bool tagPresent = false;
 String lastTagUid = "";
-const char version[] PROGMEM = "v0.96";
+const char version[] PROGMEM = "v0.97";
+
+// OLED burn-in protection: idle dim / screen-off timers (set over serial via "C|")
+unsigned long lastActivity = 0;
+unsigned long dimDelayMs = 0;        // 0 = disabled
+unsigned long offDelayMs = 0;        // 0 = disabled
+byte powerState = 0;                 // 0 = active, 1 = dimmed, 2 = off
+const byte CONTRAST_FULL = 0xCF;     // SH1106 default brightness
+const byte CONTRAST_DIM  = 0x10;
+
+// EEPROM persistence for the idle timers (survives reboots / works before the
+// daemon connects). Signature byte guards against reading an uninitialised chip.
+#define EE_SIG_ADDR 0
+#define EE_DIM_ADDR 1
+#define EE_OFF_ADDR 5
+#define EE_SIG      0xA7
 
 const unsigned char rfidisk_logo[] PROGMEM = {
 0xfc, 0x7f, 0x77, 0xe1, 0xc0, 0x1c, 0x00, 0xe6, 0x70, 0x77, 0x31, 0xc0, 0x1c, 0x00, 0xe6, 0x70, 
@@ -40,8 +56,58 @@ const unsigned char steam_icon[] PROGMEM = {
 	0xff, 0xe0, 0x01, 0xff, 0x80, 0x00, 0x7e, 0x00
 };
 
+// Send a raw command byte to the SH1106 (Adafruit_SH110X exposes no public
+// power/contrast control, so we talk to the panel directly over I2C).
+void oledCommand(uint8_t c) {
+  Wire.beginTransmission(0x3C);
+  Wire.write(0x00);   // control byte: Co=0, D/C#=0 -> command stream
+  Wire.write(c);
+  Wire.endTransmission();
+}
+
+void setPowerState(byte s) {
+  if (s == powerState) return;
+  switch (s) {
+    case 1: // dimmed
+      oledCommand(0xAF);                       // ensure panel on
+      oledCommand(0x81); oledCommand(CONTRAST_DIM);
+      break;
+    case 2: // off
+      oledCommand(0xAE);                       // panel off
+      break;
+    default: // 0 = active
+      oledCommand(0xAF);
+      oledCommand(0x81); oledCommand(CONTRAST_FULL);
+      break;
+  }
+  powerState = s;
+}
+
+// Any activity (display update, new config) wakes the panel and resets idle.
+void wakeDisplay() {
+  lastActivity = millis();
+  setPowerState(0);
+}
+
+void loadConfigFromEEPROM() {
+  if (EEPROM.read(EE_SIG_ADDR) == EE_SIG) {
+    EEPROM.get(EE_DIM_ADDR, dimDelayMs);
+    EEPROM.get(EE_OFF_ADDR, offDelayMs);
+  }
+  // Uninitialised EEPROM -> leave timers at 0 (disabled) until configured.
+}
+
+void saveConfigToEEPROM() {
+  EEPROM.update(EE_SIG_ADDR, EE_SIG);
+  EEPROM.put(EE_DIM_ADDR, dimDelayMs);   // put() only rewrites changed bytes
+  EEPROM.put(EE_OFF_ADDR, offDelayMs);
+}
+
 void setup() {
   Serial.begin(9600);
+
+  // Restore persisted idle timers before anything draws to the panel
+  loadConfigFromEEPROM();
   
   // Initialize display
   if (!display.begin(0x3C, false)) {
@@ -61,10 +127,13 @@ void setup() {
   SPI.begin();
   mfrc522.PCD_Init();
 
+  lastActivity = millis();
+
   Serial.println("OK");
 }
 
 void updateDisplay(const char* line1, const char* line2, const char* line3, const char* line4, byte iconType) {
+  wakeDisplay();  // new content -> panel on, full brightness, reset idle timer
   display.clearDisplay();
   display.setTextColor(SH110X_WHITE);
   display.setTextSize(1);
@@ -153,7 +222,28 @@ void loop() {
         
         updateDisplay(line1.c_str(), line2.c_str(), line3.c_str(), line4.c_str(), iconType);
       }
+    } else if (cmd.startsWith("C|")) {
+      // Parse config command: C|dimSeconds|offSeconds  (0 = disabled)
+      int q1 = cmd.indexOf('|');
+      int q2 = cmd.indexOf('|', q1 + 1);
+
+      if (q1 != -1 && q2 != -1) {
+        unsigned long dimS = (unsigned long) cmd.substring(q1 + 1, q2).toInt();
+        unsigned long offS = (unsigned long) cmd.substring(q2 + 1).toInt();
+        dimDelayMs = dimS * 1000UL;
+        offDelayMs = offS * 1000UL;
+        saveConfigToEEPROM();
+        wakeDisplay();
+      }
     }
+  }
+
+  // Idle dim / screen-off (unsigned subtraction is millis()-rollover safe)
+  unsigned long idle = millis() - lastActivity;
+  if (offDelayMs > 0 && idle >= offDelayMs) {
+    setPowerState(2);
+  } else if (dimDelayMs > 0 && idle >= dimDelayMs) {
+    setPowerState(1);
   }
 
   // Check RFID

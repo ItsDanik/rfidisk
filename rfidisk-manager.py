@@ -177,16 +177,25 @@ class TagManager:
         self.config = self.load_config()
         self.current_tag = None
         self.display_mode = "line1"
-        
+
+        # Live disk monitoring state (populated by the background `rfidisk --list` poller)
+        self.inserted_tag_id = None          # tag_id of the currently inserted disk (None if empty)
+        self.inserted_blank_tag_id = None    # set when the inserted disk is blank/unassigned
+        self._highlight_tag_id = None        # tag_id to visually mark in the list (inserted + registered)
+        self._disk_monitor_stop = threading.Event()
+
         # Load logo image
         self.logo_image = None
         self.load_logo()
-        
+
         self.create_widgets()
         self.refresh_tag_list()
-        
+
         # Start IPC handler after UI is fully set up
         self.root.after(100, self.setup_ipc_handler)
+
+        # Start polling the inserted disk's contents via `rfidisk --list`
+        self.start_disk_monitor()
     
     def load_theme_config(self):
         """Load theme configuration from file"""
@@ -635,7 +644,9 @@ class TagManager:
                 "desktop_notifications": True,
                 "notification_timeout": 8000,
                 "auto_launch_manager": True,
-                "disable_autolaunch": False
+                "disable_autolaunch": False,
+                "oled_dim_delay": 60,
+                "oled_off_delay": 120
             }
         }
         
@@ -707,10 +718,18 @@ class TagManager:
         installed_version = self.get_installed_version()
         version_text = f"RFIDisk Version: {installed_version}"
         
-        version_label = ttk.Label(version_frame, text=version_text, 
-                                font=('Segoe UI', 8), 
+        version_label = ttk.Label(version_frame, text=version_text,
+                                font=('Segoe UI', 8),
                                 foreground=COLORS["text_tertiary"])
         version_label.pack(side=tk.RIGHT)
+
+        # Disk status at the bottom left, shared across all tabs and updated live
+        self.disk_status_var = tk.StringVar(value="No Disk")
+        self.disk_status_label = ttk.Label(version_frame, textvariable=self.disk_status_var,
+                                           font=('Segoe UI', 8),
+                                           foreground=COLORS["accent_secondary"],
+                                           justify=tk.LEFT)
+        self.disk_status_label.pack(side=tk.LEFT)
     
     def setup_quit_tab(self):
         """Setup the quit tab with confirmation"""
@@ -800,6 +819,12 @@ class TagManager:
         self.tag_id_var = tk.StringVar()
         self.tag_id_entry = ttk.Entry(editor_content, textvariable=self.tag_id_var, width=30)
         self.tag_id_entry.grid(row=0, column=1, sticky=tk.W+tk.E, pady=2)
+
+        # "Copy from Disk" appears only while a blank/unassigned disk is inserted
+        self.copy_disk_btn = ttk.Button(editor_content, text="Copy from Disk",
+                                        command=self.copy_tag_from_disk)
+        self.copy_disk_btn.grid(row=0, column=2, padx=5)
+        self.copy_disk_btn.grid_remove()
         
         # Command
         ttk.Label(editor_content, text="Launch Command:").grid(row=1, column=0, sticky=tk.W, pady=2)
@@ -905,13 +930,27 @@ class TagManager:
         ttk.Label(settings_container, text="Auto Launch Manager:").grid(row=6, column=0, sticky=tk.W, pady=5, padx=5)
         self.auto_launch_var = tk.BooleanVar(value=self.config["settings"].get("auto_launch_manager", True))
         ttk.Checkbutton(settings_container, variable=self.auto_launch_var).grid(row=6, column=1, sticky=tk.W, pady=5, padx=5)
-                
+
+        # OLED idle dim delay (burn-in protection; 0 = disabled)
+        ttk.Label(settings_container, text="OLED Dim Delay (seconds, 0=off):").grid(row=7, column=0, sticky=tk.W, pady=5, padx=5)
+        self.oled_dim_delay_var = tk.IntVar(value=self.config["settings"].get("oled_dim_delay", 60))
+        self.oled_dim_delay_spinbox = ttk.Spinbox(settings_container, from_=0, to=3600, increment=10,
+                                                  textvariable=self.oled_dim_delay_var, width=10)
+        self.oled_dim_delay_spinbox.grid(row=7, column=1, sticky=tk.W, pady=5, padx=5)
+
+        # OLED idle screen-off delay (burn-in protection; 0 = disabled)
+        ttk.Label(settings_container, text="OLED Screen-Off Delay (seconds, 0=off):").grid(row=8, column=0, sticky=tk.W, pady=5, padx=5)
+        self.oled_off_delay_var = tk.IntVar(value=self.config["settings"].get("oled_off_delay", 120))
+        self.oled_off_delay_spinbox = ttk.Spinbox(settings_container, from_=0, to=3600, increment=10,
+                                                 textvariable=self.oled_off_delay_var, width=10)
+        self.oled_off_delay_spinbox.grid(row=8, column=1, sticky=tk.W, pady=5, padx=5)
+
         # Save & Apply button (UPDATED)
-        ttk.Button(settings_container, text="Save & Apply", command=self.save_and_apply_settings).grid(row=7, column=0, columnspan=3, pady=20)
-        
+        ttk.Button(settings_container, text="Save & Apply", command=self.save_and_apply_settings).grid(row=9, column=0, columnspan=3, pady=20)
+
         # Status label
         self.settings_status_var = tk.StringVar(value="Settings loaded")
-        ttk.Label(settings_container, textvariable=self.settings_status_var).grid(row=8, column=0, columnspan=3, pady=5)
+        ttk.Label(settings_container, textvariable=self.settings_status_var).grid(row=10, column=0, columnspan=3, pady=5)
         
         # Set initial state for notification timeout
         self.toggle_notification_settings()
@@ -931,7 +970,9 @@ class TagManager:
             self.config["settings"]["desktop_notifications"] = bool(self.notifications_var.get())
             self.config["settings"]["notification_timeout"] = int(self.notification_timeout_var.get())
             self.config["settings"]["auto_launch_manager"] = bool(self.auto_launch_var.get())
-            
+            self.config["settings"]["oled_dim_delay"] = int(self.oled_dim_delay_var.get())
+            self.config["settings"]["oled_off_delay"] = int(self.oled_off_delay_var.get())
+
             # Save to file
             if self.save_config():
                 # Apply theme if changed
@@ -1008,9 +1049,15 @@ class TagManager:
         """Refresh the tag list with current display mode"""
         self.tag_listbox.delete(0, tk.END)
         display_items = self.get_display_items()
-        
-        for tag_id, display_text in display_items:
+
+        for i, (tag_id, display_text) in enumerate(display_items):
             self.tag_listbox.insert(tk.END, display_text)
+            # Mark the entry of the currently inserted disk so it stands out.
+            # (Tkinter Listbox can't bold individual items, so we recolor it.)
+            if self._highlight_tag_id and tag_id == self._highlight_tag_id:
+                self.tag_listbox.itemconfig(i,
+                                            foreground=COLORS["accent_success"],
+                                            selectforeground=COLORS["accent_success"])
     
     def get_selected_tag_id(self):
         """Get the actual tag ID from the current selection"""
@@ -1187,8 +1234,151 @@ class TagManager:
         else:
             messagebox.showinfo("Info", "No custom terminate command - would use standard termination")
     
+    # ------------------------------------------------------------------
+    # Live disk monitoring (polls `rfidisk --list` in the background)
+    # ------------------------------------------------------------------
+    def start_disk_monitor(self):
+        """Start the background thread that watches the inserted disk"""
+        self._disk_monitor_thread = threading.Thread(
+            target=self._disk_monitor_loop, daemon=True)
+        self._disk_monitor_thread.start()
+
+    def _disk_monitor_loop(self):
+        """Poll `rfidisk --list` once a second and push results to the UI thread"""
+        rfidisk_script = os.path.join(SCRIPT_DIR, "rfidisk.py")
+        while not self._disk_monitor_stop.is_set():
+            info = self._query_disk_status(rfidisk_script)
+            try:
+                # Widgets may only be touched from the main thread
+                self.root.after(0, self.apply_disk_status, info)
+            except RuntimeError:
+                break  # interpreter/UI is shutting down
+            self._disk_monitor_stop.wait(1.0)
+
+    def _query_disk_status(self, rfidisk_script):
+        """Run `rfidisk --list` and parse its output"""
+        try:
+            result = subprocess.run(
+                [sys.executable, rfidisk_script, "--list"],
+                capture_output=True, text=True, timeout=5)
+            return self._parse_list_output(result.stdout)
+        except Exception:
+            return {'present': False, 'tag_id': '',
+                    'line1': '', 'line2': '', 'line3': '', 'line4': ''}
+
+    def _parse_list_output(self, text):
+        """Parse the textual output of `rfidisk --list` into a dict"""
+        info = {'present': False, 'tag_id': '',
+                'line1': '', 'line2': '', 'line3': '', 'line4': ''}
+        if not text:
+            return info
+        # "No disk" / daemon-not-running states mean nothing is inserted
+        if 'No disk' in text or 'daemon not running' in text:
+            return info
+
+        lines = text.splitlines()
+        term_idx = None
+        for i, line in enumerate(lines):
+            if line.startswith('Tag ID:'):
+                info['tag_id'] = line.split(':', 1)[1].strip().lower()
+            elif line.startswith('Terminate:'):
+                term_idx = i
+        if term_idx is None:
+            return info  # not a valid "disk inserted" report
+
+        # The four display lines follow a blank line after the Terminate row
+        display = lines[term_idx + 1:]
+        while display and not display[0].strip():
+            display.pop(0)
+        for idx, key in enumerate(('line1', 'line2', 'line3', 'line4')):
+            if idx < len(display):
+                info[key] = display[idx].rstrip()
+        info['present'] = True
+
+        # On the "new tag detected" / "new entry" screens the raw UID lives in
+        # line4 and `--list` can't resolve a Tag ID, so fall back to it.
+        if not info['tag_id'] and info['line4']:
+            cand = info['line4'].strip().lower()
+            if cand and all(c in '0123456789abcdef' for c in cand):
+                info['tag_id'] = cand
+        return info
+
+    def is_blank_tag(self, tag_id):
+        """A tag is blank/unassigned if it's unknown or has no launch command"""
+        if not tag_id:
+            return False
+        if tag_id not in self.tags:
+            return True
+        return not self.tags[tag_id].get('command', '').strip()
+
+    def apply_disk_status(self, info):
+        """Update the UI from a disk status report (runs on the main thread)"""
+        present = info['present']
+        tag_id = info['tag_id']
+
+        # Bottom-left status text (visible on all tabs)
+        if not present:
+            self.disk_status_var.set("No Disk")
+        else:
+            title = ' / '.join(p for p in (info['line1'], info['line2']) if p)
+            label = f"💾 {tag_id}" if tag_id else "💾 (unknown id)"
+            if title:
+                label += f"   {title}"
+            self.disk_status_var.set(label)
+
+        # Only react further when the inserted disk actually changes
+        new_inserted = tag_id if present else None
+        if new_inserted == self.inserted_tag_id:
+            return
+        self.inserted_tag_id = new_inserted
+
+        # Reload tags so daemon-created "new entry" rows are visible
+        self.tags = self.load_tags()
+
+        # Classify the inserted disk: blank/unassigned vs. registered
+        self.inserted_blank_tag_id = None
+        registered = False
+        if present and tag_id:
+            if self.is_blank_tag(tag_id):
+                self.inserted_blank_tag_id = tag_id
+            else:
+                registered = True
+
+        # Show/hide the "Copy from Disk" button
+        if self.inserted_blank_tag_id:
+            self.copy_disk_btn.grid()
+        else:
+            self.copy_disk_btn.grid_remove()
+
+        # Refresh the list when the highlight changes or a disk is inserted
+        old_highlight = self._highlight_tag_id
+        self._highlight_tag_id = tag_id if registered else None
+        if self._highlight_tag_id != old_highlight or present:
+            self.refresh_tag_list()
+
+        # Select a registered inserted disk so the user can edit/delete it easily
+        if registered:
+            self._select_tag_in_list(tag_id, load=True)
+
+    def _select_tag_in_list(self, tag_id, load=False):
+        """Select (and optionally load) the given tag in the listbox"""
+        for i, (tid, _) in enumerate(self.get_display_items()):
+            if tid == tag_id:
+                self.tag_listbox.selection_clear(0, tk.END)
+                self.tag_listbox.selection_set(i)
+                self.tag_listbox.see(i)
+                if load:
+                    self.load_tag_data(tag_id)
+                break
+
+    def copy_tag_from_disk(self):
+        """Copy the inserted blank disk's tag_id into the Tag ID field"""
+        if self.inserted_blank_tag_id:
+            self.tag_id_var.set(self.inserted_blank_tag_id)
+
     def quit_app(self):
         """Quit the application"""
+        self._disk_monitor_stop.set()
         self.singleton.cleanup()
         self.root.quit()
 
